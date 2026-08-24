@@ -1,0 +1,28 @@
+package com.fintech.common.event;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fintech.common.messaging.AggregateMessage;
+import com.fintech.common.messaging.AggregateType;
+
+import java.time.Instant;
+import java.util.UUID;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
+public record AccountActivatedEvent(
+        String accountId,
+        String customerId,
+        Instant occurredAt
+) implements AggregateMessage {
+    @Override
+    @JsonProperty("aggregateId") // Maps getAggregateId() result to JSON
+    public String getAggregateId() {
+        return accountId.toString();
+    }
+
+    @Override
+    @JsonProperty("aggregateType") // Maps getAggregateType() result to JSON
+    public AggregateType getAggregateType() {
+        return AggregateType.ACCOUNT;
+    }
+}

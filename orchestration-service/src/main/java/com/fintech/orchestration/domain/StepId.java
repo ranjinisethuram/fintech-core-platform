@@ -1,0 +1,16 @@
+package com.fintech.orchestration.domain;
+
+public enum StepId {
+    CREATE_ACCOUNT,
+    CREATE_WALLET,
+    CREATE_LEDGER_ACCOUNT,
+    ACTIVATE_ACCOUNT,
+    CREATE_LEDGER_ENTRIES,
+    CREDIT_WALLET,
+    RESERVE_FUNDS,
+    COMMIT_FUNDS,
+    FRAUD_CHECK,
+    FUND_TRANSFER,
+    NOTIFICATION,
+    ANALYTICS
+}

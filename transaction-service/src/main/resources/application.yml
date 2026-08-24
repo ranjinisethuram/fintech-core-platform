@@ -1,0 +1,144 @@
+server:
+  port: 8085
+
+spring:
+  application:
+    name: transaction-service
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/transaction_db
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        jdbc:
+          time_zone: UTC
+        #type:
+         # json_format_mapper: com.fintech.common.mapper.Jackson3FormatMapper
+
+  kafka:
+    bootstrap-servers: 172.22.92.202:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JacksonJsonSerializer
+      acks: all
+      retries: 3
+      properties:
+        linger.ms: 5
+        enable.idempotence: true
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:9090/realms/fintech-realm
+
+  cloud:
+#    openfeign:
+#      circuitbreaker:
+#        enabled: true
+#      alphanumeric-ids:
+#        enabled: true # Crucial for Spring Boot 4 compatibility
+    circuitbreaker:
+      bulkhead:
+        resilience4j:
+          enabled: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+outbox:
+  poller:
+    fixed-delay-ms: 5000
+    batch-size: 50
+    retry-limit: 5
+
+logging:
+  level:
+    root: INFO
+    org.hibernate.SQL: WARN
+    org.springframework.kafka: INFO
+
+feign:
+  client:
+    config:
+      account-service:
+        connectTimeout: ${ACCOUNT_CONNECT_TIMEOUT:1500}
+        readTimeout: ${ACCOUNT_READ_TIMEOUT:2500}
+      wallet-service:
+        connectTimeout: ${WALLET_CONNECT_TIMEOUT:1500}
+        readTimeout: ${WALLET_READ_TIMEOUT:2500}
+      ledger-service:
+        connectTimeout: ${LEDGER_CONNECT_TIMEOUT:1500}
+        readTimeout: ${LEDGER_READ_TIMEOUT:2500}
+
+resilience4j:
+  circuitbreaker:
+    metrics:
+      enabled: false
+    instances:
+      accountServiceCB:
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s
+      walletServiceCB:
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s
+      ledgerServiceCB:
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s
+
+  retry:
+    instances:
+      accountServiceRetry:
+        max-attempts: 3
+        wait-duration: 500ms
+        retry-exceptions:
+          - java.io.IOException
+          - feign.RetryableException
+      walletServiceRetry:
+        max-attempts: 3
+        wait-duration: 500ms
+        retry-exceptions:
+          - java.io.IOException
+          - feign.RetryableException
+      ledgerServiceRetry:
+        max-attempts: 3
+        wait-duration: 500ms
+        retry-exceptions:
+          - java.io.IOException
+          - feign.RetryableException
+
+  timelimiter:
+    instances:
+      accountServiceTL:
+        timeout-duration: 3s
+      walletServiceTL:
+        timeout-duration: 3s
+      ledgerServiceTL:
+        timeout-duration: 3s
+
+clients:
+  account-service:
+    url: http://localhost:8081
+  wallet-service:
+    url: http://localhost:8083
+  ledger-service:
+    url: http://localhost:8084
+
+keycloak:
+  token-url: http://localhost:9090/realms/fintech-realm/protocol/openid-connect/token
+  client-id: fintech-client
+  client-secret: tBCgqZX6GM0Irm9q0VCWHhFhFBpqAuOR

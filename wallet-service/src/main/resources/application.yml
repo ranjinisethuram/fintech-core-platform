@@ -1,0 +1,61 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: wallet-service
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/wallet_db
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        jdbc:
+          time_zone: UTC
+       # type:
+        #  json_format_mapper: com.fintech.common.mapper.Jackson3FormatMapper
+
+  kafka:
+    bootstrap-servers: 172.22.92.202:9092
+    producer:
+      # Defining this prefix auto-enables Spring Boot 4 Kafka transaction managers
+      transaction-id-prefix: tx-orchestration-
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JacksonJsonSerializer
+      acks: all
+      retries: 3
+      properties:
+        linger.ms: 5
+        enable.idempotence: true
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:9090/realms/fintech-realm
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+outbox:
+  poller:
+    fixed-delay-ms: 5000
+    batch-size: 50
+    retry-limit: 5
+
+logging:
+  level:
+    root: INFO
+    org.hibernate.SQL: WARN
+    org.springframework.kafka: INFO
