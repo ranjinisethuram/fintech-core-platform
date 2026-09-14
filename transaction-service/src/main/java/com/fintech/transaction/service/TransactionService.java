@@ -4,27 +4,26 @@ import com.fintech.accountcontract.domain.AccountValidationFieldConstant;
 import com.fintech.accountcontract.dto.AccountValidationRequest;
 import com.fintech.accountcontract.dto.AccountValidationResponse;
 import com.fintech.common.domain.TransactionType;
-import com.fintech.common.event.TransactionInitiatedEvent;
+import com.fintech.common.event.*;
 import com.fintech.common.exception.BaseException;
 import com.fintech.common.exception.CommonErrorCode;
 import com.fintech.common.exception.FieldErrorDetail;
 import com.fintech.common.messaging.MessageEnvelope;
 import com.fintech.common.messaging.MessageEnvelopeFactory;
+import com.fintech.common.orchestration.contextmapper.SagaContextMapper;
+import com.fintech.common.orchestration.contextmapper.TransactionHandlingContext;
 import com.fintech.commoncontract.ApiErrorLiterals;
 import com.fintech.outbox.OutboxMapper;
 import com.fintech.transaction.domain.Transaction;
 import com.fintech.transaction.domain.TransactionStatus;
-import com.fintech.transaction.dto.TransactionHistory;
 import com.fintech.transaction.dto.TransactionRequest;
 import com.fintech.transaction.dto.TransactionResponse;
 import com.fintech.transaction.exception.TransactionErrorCode;
 import com.fintech.transaction.feign.account.AccountValidationAdapter;
-import com.fintech.transaction.feign.wallet.WalletValidationAdapter;
 import com.fintech.transaction.outbox.TransactionOutboxEvent;
 import com.fintech.transaction.outbox.TransactionOutboxRepository;
 import com.fintech.transaction.repository.TransactionRepository;
-import com.fintech.walletcontract.dto.WalletAccountValidationRequest;
-import jakarta.validation.Valid;
+import com.fintech.transactioncontract.dto.TransactionHistory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,6 +31,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class TransactionService {
@@ -41,16 +41,18 @@ public class TransactionService {
     private final OutboxMapper mapper;
     private final AccountValidationAdapter accountAdapter;
     private final MessageEnvelopeFactory messageEnvelopeFactory;
+    private final SagaContextMapper sagaContextMapper;
 
     private static final UUID NIL_UUID = new UUID(0L, 0L);
 
     public TransactionService(TransactionRepository transactionRepository, TransactionOutboxRepository transactionOutboxRepository, OutboxMapper mapper
-            , AccountValidationAdapter accountAdapter, MessageEnvelopeFactory messageEnvelopeFactory) {
+            , AccountValidationAdapter accountAdapter, MessageEnvelopeFactory messageEnvelopeFactory, SagaContextMapper sagaContextMapper) {
         this.transactionRepository = transactionRepository;
         this.transactionOutboxRepository = transactionOutboxRepository;
         this.mapper = mapper;
         this.accountAdapter = accountAdapter;
         this.messageEnvelopeFactory = messageEnvelopeFactory;
+        this.sagaContextMapper = sagaContextMapper;
     }
 
     @Transactional
@@ -68,6 +70,7 @@ public class TransactionService {
             UUID transactionId = this.transactionRepository.saveAndFlush(transaction).getTransactionId();
             String requestId = "transaction"+"_"+UUID.randomUUID();
             TransactionInitiatedEvent transactionInitiatedEvent = new TransactionInitiatedEvent(
+                    requestId,
                     transactionId.toString(),
                     transaction.getSourceAccountId().toString(),
                     transaction.getDestinationAccountId().toString(),
@@ -105,6 +108,7 @@ public class TransactionService {
             UUID transactionId = this.transactionRepository.saveAndFlush(transaction).getTransactionId();
             String requestId = "transaction"+"_"+UUID.randomUUID();
             TransactionInitiatedEvent transactionInitiatedEvent = new TransactionInitiatedEvent(
+                    requestId,
                     transactionId.toString(),
                     transaction.getSourceAccountId().toString(),
                     transaction.getDestinationAccountId().toString(),
@@ -142,6 +146,7 @@ public class TransactionService {
             UUID transactionId = this.transactionRepository.saveAndFlush(transaction).getTransactionId();
             String requestId = "transaction"+"_"+UUID.randomUUID();
             TransactionInitiatedEvent transactionInitiatedEvent = new TransactionInitiatedEvent(
+                    requestId,
                     transactionId.toString(),
                     transaction.getSourceAccountId().toString(),
                     transaction.getDestinationAccountId().toString(),
@@ -164,9 +169,105 @@ public class TransactionService {
         }
     }
 
-    public TransactionHistory fetchTransactionHistory(UUID sourceAccountId, Instant createdAfter){
+    @Transactional
+    public void buildTransactionSucceededEventAndPublishToOutbox(SagaSucceededEvent
+                     sagaSucceededEvent, String causationId){
+        TransactionHandlingContext transactionHandlingContext = this.sagaContextMapper.fromJson(
+                sagaSucceededEvent.sagaContext(), TransactionHandlingContext.class
+        );
+        updateTransactionStatus(transactionHandlingContext.getTransactionId(), TransactionStatus.SUCCESS);
+        TransactionSagaSucceededEvent transactionSagaSucceededEvent = new TransactionSagaSucceededEvent(
+                transactionHandlingContext.getTransactionId().toString(),
+                sagaSucceededEvent.sagaId(),
+                transactionHandlingContext.getSourceAccountId().toString(),
+                transactionHandlingContext.getDestinationAccountId().toString(),
+                transactionHandlingContext.getAmount(),
+                transactionHandlingContext.getCurrency(),
+                transactionHandlingContext.getTransactionType()
+        );
+        MessageEnvelope<TransactionSagaSucceededEvent> messageEnvelope =
+                this.messageEnvelopeFactory.build(transactionHandlingContext.getRequestId()
+                        ,causationId,sagaSucceededEvent.sagaId()
+                        ,"TransactionService",transactionSagaSucceededEvent);
+        TransactionOutboxEvent transactionOutboxEvent = mapper
+                .mapToOutboxEvent(messageEnvelope, TransactionOutboxEvent::new);
+        this.transactionOutboxRepository.saveAndFlush(transactionOutboxEvent);
+    }
+
+    @Transactional
+    public void buildTransactionFailedEventAndPublishToOutbox(SagaFailedEvent sagaFailedEvent,
+                      String causationId){
+        TransactionHandlingContext transactionHandlingContext = this.sagaContextMapper.fromJson(
+                sagaFailedEvent.sagaContext(), TransactionHandlingContext.class
+        );
+        TransactionStatus transactionStatus = sagaFailedEvent.isCompensated()
+                ? TransactionStatus.COMPENSATED
+                : TransactionStatus.FAILED;
+        updateTransactionStatus(transactionHandlingContext.getTransactionId(), transactionStatus);
+        TransactionSagaFailedEvent transactionSagaFailedEvent = new TransactionSagaFailedEvent(
+                transactionHandlingContext.getTransactionId().toString(),
+                transactionHandlingContext.getSourceAccountId().toString(),
+                transactionHandlingContext.getDestinationAccountId().toString(),
+                sagaFailedEvent.sagaId(),
+                transactionHandlingContext.getAmount(),
+                transactionHandlingContext.getCurrency(),
+                transactionHandlingContext.getTransactionType(),
+                sagaFailedEvent.reason(),
+                Instant.now()
+        );
+        MessageEnvelope<TransactionSagaFailedEvent> messageEnvelope =
+                this.messageEnvelopeFactory.build(transactionHandlingContext.getRequestId()
+                        ,causationId,sagaFailedEvent.sagaId()
+                        ,"TransactionService",transactionSagaFailedEvent);
+        TransactionOutboxEvent transactionOutboxEvent = mapper
+                .mapToOutboxEvent(messageEnvelope, TransactionOutboxEvent::new);
+        this.transactionOutboxRepository.saveAndFlush(transactionOutboxEvent);
+    }
+
+    @Transactional
+    public void updateTransactionStatus(UUID transactionId, TransactionStatus transactionStatus) {
+        this.transactionRepository.findById(transactionId)
+                .ifPresent(transaction -> transaction.modifyTransactionStatus(transactionStatus));
+    }
+
+    public List<TransactionHistory> fetchTransactionHistory(UUID sourceAccountId, Instant createdAfter){
         List<Transaction> transactionHistory = this.transactionRepository.findBySourceAccountIdAndCreatedAtAfter(sourceAccountId, createdAfter);
-        transactionHistory.stream().
+        return transactionHistory.stream().map(transaction ->
+                buildTransactionHistory(transaction))
+                .collect(Collectors.toList());
+    }
+
+    private TransactionHistory buildTransactionHistory(Transaction transaction){
+        TransactionHistory transactionHistory = new TransactionHistory();
+        transactionHistory.setTransactionId(transaction.getTransactionId());
+        transactionHistory.setSourceAccountId(transaction.getSourceAccountId());
+        transactionHistory.setDestinationAccountId(transaction.getDestinationAccountId());
+        transactionHistory.setAmount(transaction.getAmount());
+        transactionHistory.setCurrency(transaction.getCurrency());
+        transactionHistory.setTransactionType(transaction.getTransactionType());
+        transactionHistory.setTimestamp(transaction.getCreatedAt());
+        // include status
+        if(transaction.getTransactionStatus() != null){
+            transactionHistory.setStatus(transaction.getTransactionStatus().getStatus());
+        }
+        return transactionHistory;
+    }
+
+    @Transactional
+    public com.fintech.transaction.dto.TransactionStatusResponse getTransactionStatus(UUID transactionId){
+        Transaction transaction = this.transactionRepository.findById(transactionId)
+                .orElseThrow(() -> new com.fintech.common.exception.BaseException(com.fintech.transaction.exception.TransactionErrorCode.TRANSACTION_INITIATION_FAILED));
+        String status = null;
+        if(transaction.getTransactionStatus() != null){
+            status = transaction.getTransactionStatus().getStatus();
+        }
+        com.fintech.transaction.dto.TransactionStatusResponse resp = new com.fintech.transaction.dto.TransactionStatusResponse(
+                transaction.getTransactionId().toString(),
+                status,
+                transaction.getAmount(),
+                transaction.getCurrency() != null ? transaction.getCurrency().name() : null
+        );
+        return resp;
     }
 
     private boolean isAccountValid(TransactionRequest transactionRequest, UUID customerId,

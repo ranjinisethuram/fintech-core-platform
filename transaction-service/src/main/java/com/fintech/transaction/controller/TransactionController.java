@@ -52,4 +52,11 @@ public class TransactionController {
                 .body(transactionResponse);
     }
 
+    @GetMapping(value="/{id}")
+    @PreAuthorize("hasRole('USER') and hasAuthority('SCOPE_transaction:get')")
+    public ResponseEntity<com.fintech.transaction.dto.TransactionStatusResponse> getTransactionStatus(@PathVariable("id") UUID transactionId){
+        com.fintech.transaction.dto.TransactionStatusResponse resp = this.transactionService.getTransactionStatus(transactionId);
+        return ResponseEntity.status(HttpStatus.OK).body(resp);
+    }
+
 }
