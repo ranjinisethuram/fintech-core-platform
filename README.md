@@ -11,7 +11,6 @@ The platform demonstrates an event-driven microservices architecture for custome
 * Saga orchestration
 * Fraud evaluation
 * Event-driven analytics
-* Notifications
 * AI assistant integration
 * Outbox pattern
 * Idempotent event processing
@@ -38,14 +37,14 @@ The platform demonstrates an event-driven microservices architecture for custome
 ┌─────────────────────────────────────────────────────────────────────┐
 │                         FINTECH PLATFORM                            │
 │                                                                     │
-│  ┌──────────────┐   ┌──────────────┐   ┌────────────────────────┐ │
-│  │ Customer     │   │ Account      │   │ Wallet                 │ │
-│  │ Service      │   │ Service      │   │ Service                │ │
-│  └──────────────┘   └──────────────┘   └────────────────────────┘ │
+│  ┌──────────────┐   ┌──────────────┐   ┌────────────────────────┐   │
+│  │ Customer     │   │ Account      │   │ Wallet                 │   │
+│  │ Service      │   │ Service      │   │ Service                │   │
+│  └──────────────┘   └──────────────┘   └────────────────────────┘   │
 │                                                                     │
-│  ┌────────────────────┐       ┌──────────────────────────────────┐ │
-│  │ Transaction Service│       │ Ledger Service                   │ │
-│  └─────────┬──────────┘       └──────────────────────────────────┘ │
+│  ┌────────────────────┐       ┌──────────────────────────────────┐  │
+│  │ Transaction Service│       │ Ledger Service                   │  │
+│  └─────────┬──────────┘       └──────────────────────────────────┘  │
 │            │                                                        │
 │            │ Outbox                                                 │
 │            ▼                                                        │
@@ -54,19 +53,19 @@ The platform demonstrates an event-driven microservices architecture for custome
 │       └─────┬─────┘                                                 │
 │             │                                                       │
 │             ▼                                                       │
-│  ┌─────────────────────────┐                                       │
-│  │ Orchestration Service   │                                       │
-│  │                         │                                       │
-│  │ Saga State              │                                       │
-│  │ Recovery                │                                       │
-│  │ Retry                   │                                       │
-│  │ Compensation            │                                       │
-│  └────────────┬────────────┘                                       │
+│  ┌─────────────────────────┐                                        │
+│  │ Orchestration Service   │                                        │
+│  │                         │                                        │
+│  │ Saga State              │                                        │
+│  │ Recovery                │                                        │
+│  │ Retry                   │                                        │
+│  │ Compensation            │                                        │
+│  └────────────┬────────────┘                                        │
 │               │                                                     │
-│        ┌──────┼───────────────┐                                    │
-│        ▼      ▼               ▼                                    │
-│     Fraud   Wallet          Ledger                                 │
-│    Service  Service         Service                                │
+│        ┌──────┼───────────────┐                                     │
+│        ▼      ▼               ▼                                     │
+│     Fraud   Wallet          Ledger                                  │
+│    Service  Service         Service                                 │
 │                                                                     │
 └───────────────────────┬─────────────────────────────────────────────┘
                         │
@@ -76,9 +75,9 @@ The platform demonstrates an event-driven microservices architecture for custome
                  └──────┬───────┘
                         │
               ┌─────────┼─────────┐
-              ▼         ▼         ▼
-         Analytics  Notification  Other
-          Service      Service   Consumers
+              ▼                   ▼
+         Analytics              Other
+          Service               Consumers
 ```
 
 ---
@@ -452,28 +451,6 @@ GET /api/v1/analytics/fraud/daily
 
 This creates a separate read/analytics model instead of querying transactional databases directly.
 
----
-
-# 🔔 Notification Service
-
-Notifications are asynchronous side effects.
-
-```text
-TransactionCompletedEvent
-          │
-          ▼
-        Kafka
-          │
-          ▼
-Notification Service
-          │
-          ▼
-Email / SMS / Push
-```
-
-Notification processing does not block the transaction Saga.
-
----
 
 # 🤖 AI Assistant Integration
 
@@ -640,14 +617,13 @@ fintech-platform/
 ├── transaction-service/
 ├── orchestration-service/
 ├── fraud-service/
-├── notification-service/
 ├── analytics-service/
 ├── ai-tool-service/
 │
-├── common-lib/
-├── common-logging/
+├── common-core/
+├── outbox-core/
 ├── common-security/
-├── account-contract/
+├── internal-contract/
 │
 ├── pom.xml
 └── README.md
