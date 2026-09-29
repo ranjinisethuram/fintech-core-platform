@@ -27,7 +27,7 @@ spring:
     bootstrap-servers: 172.22.92.202:9092
     producer:
       # Defining this prefix auto-enables Spring Boot 4 Kafka transaction managers
-      transaction-id-prefix: tx-account-
+      #transaction-id-prefix: tx-account-
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JacksonJsonSerializer
       acks: all
@@ -59,3 +59,4 @@ logging:
     root: INFO
     org.hibernate.SQL: WARN
     org.springframework.kafka: INFO
+    org.springframework.security: TRACE

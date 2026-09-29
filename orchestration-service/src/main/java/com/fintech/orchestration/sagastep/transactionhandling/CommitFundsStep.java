@@ -1,9 +1,8 @@
 package com.fintech.orchestration.sagastep.transactionhandling;
 
 import com.fintech.common.command.CommitWalletFundCommand;
-import com.fintech.common.command.ReserveWalletFundCommand;
-import com.fintech.orchestration.contextmapper.SagaContextMapper;
-import com.fintech.orchestration.contextmapper.TransactionHandlingContext;
+import com.fintech.common.orchestration.contextmapper.SagaContextMapper;
+import com.fintech.common.orchestration.contextmapper.TransactionHandlingContext;
 import com.fintech.orchestration.domain.Saga;
 import com.fintech.orchestration.domain.SagaContext;
 import com.fintech.orchestration.domain.StepId;
@@ -57,7 +56,6 @@ public class CommitFundsStep implements SagaStep {
                 currentSaga.getCorrelationId(),
                 causationId,
                 currentSaga.getSagaId().toString(),
-                "wallet-commands",
-                false);
+                "wallet-commands");
     }
 }

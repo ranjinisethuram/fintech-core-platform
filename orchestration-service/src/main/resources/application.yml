@@ -13,7 +13,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: validate
+      ddl-auto: update
     show-sql: false
     properties:
       hibernate:
@@ -27,7 +27,7 @@ spring:
     bootstrap-servers: 172.22.92.202:9092
     producer:
       # Defining this prefix auto-enables Spring Boot 4 Kafka transaction managers
-      transaction-id-prefix: tx-orchestration-
+      #transaction-id-prefix: tx-orchestration-
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JacksonJsonSerializer
       acks: all
@@ -35,12 +35,26 @@ spring:
       properties:
         linger.ms: 5
         enable.idempotence: true
+    consumer:
+      group-id: orchestration-services
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
+      properties:
+        spring.json.trusted.packages: "*"
+        spring.deserializer.value.delegate.class: org.springframework.kafka.support.serializer.JacksonJsonDeserializer
 
   security:
     oauth2:
       resourceserver:
         jwt:
           issuer-uri: http://localhost:9090/realms/fintech-realm
+
+  cloud:
+    circuitbreaker:
+      bulkhead:
+        resilience4j:
+          enabled: false
 
 management:
   endpoints:
@@ -62,6 +76,44 @@ saga:
     fixed-delay-ms: 60000
     batch-size: 50
     limit: 3
+
+feign:
+  client:
+    config:
+      transaction-service:
+        connectTimeout: ${TRANSACTION_CONNECT_TIMEOUT:1500}
+        readTimeout: ${TRANSACTION_READ_TIMEOUT:2500}
+
+resilience4j:
+  circuitbreaker:
+    metrics:
+      enabled: false
+    instances:
+      transactionServiceCB:
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s
+  retry:
+    instances:
+      transactionServiceRetry:
+        max-attempts: 3
+        wait-duration: 500ms
+        retry-exceptions:
+          - java.io.IOException
+          - feign.RetryableException
+  timelimiter:
+    instances:
+      transactionServiceTL:
+        timeout-duration: 3s
+
+clients:
+  transaction-service:
+    url: http://localhost:8085
+
+keycloak:
+  token-url: http://localhost:9090/realms/fintech-realm/protocol/openid-connect/token
+  client-id: fintech-client
+  client-secret: tBCgqZX6GM0Irm9q0VCWHhFhFBpqAuOR
 
 logging:
   level:

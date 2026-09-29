@@ -2,6 +2,7 @@ package com.fintech.ledger.service;
 
 import com.fintech.common.command.CreateLedgerEntryCommand;
 import com.fintech.common.command.CreateWalletLedgerAccountCommand;
+import com.fintech.common.command.ReverseLedgerEntryCommand;
 import com.fintech.common.domain.LedgerEntryRequest;
 import com.fintech.common.domain.LedgerEntryType;
 import com.fintech.common.domain.TransactionType;
@@ -56,7 +57,9 @@ public class LedgerService {
     @Transactional
     public void createLedgerEntries(CreateLedgerEntryCommand createLedgerEntryCommand, String correlationId,
                                   String causationId, String sagaId){
-        Map<String,UUID> sourceDestinationAccountIds = resolveSourceDestinationAccountIds(createLedgerEntryCommand);
+        Map<String,UUID> sourceDestinationAccountIds = resolveSourceDestinationAccountIds(
+                createLedgerEntryCommand.sourceAcountId(), createLedgerEntryCommand.destinationAccountId(),
+                createLedgerEntryCommand.transactionType());
         try {
             List<Ledger> ledgerEntries = new ArrayList<>();
             ledgerEntries.add(new Ledger(createLedgerEntryCommand.paymentId()
@@ -86,8 +89,8 @@ public class LedgerService {
                     sagaId);
         }catch(DataIntegrityViolationException dataIntegrityViolationException){
             LedgerEntriesCreationFailedEvent ledgerEntriesCreationFailedEvent = new LedgerEntriesCreationFailedEvent(
-                    createLedgerEntryCommand.sourceAcountId(),
-                    createLedgerEntryCommand.destinationAccountId(),
+                    sourceDestinationAccountIds.get("sourceAccountId"),
+                    sourceDestinationAccountIds.get("destinationAccountId"),
                     createLedgerEntryCommand.paymentId(),
                     createLedgerEntryCommand.transactionType(),
                     LedgerErrorCode.LEDGER_ENTRY_ALREADY_EXISTS.getErrorCode(),
@@ -95,6 +98,58 @@ public class LedgerService {
                     LedgerErrorCode.LEDGER_ENTRY_ALREADY_EXISTS.isRetryable(),
                     Instant.now());
             buildMessageEnvelopeAndPushToOutbox(ledgerEntriesCreationFailedEvent,
+                    correlationId,
+                    causationId,
+                    sagaId);
+        }
+    }
+
+    public void reverseLedgerEntries(ReverseLedgerEntryCommand reverseLedgerEntryCommand, String correlationId,
+                                     String causationId, String sagaId){
+        Map<String,UUID> sourceDestinationAccountIds = resolveSourceDestinationAccountIds(
+                reverseLedgerEntryCommand.sourceAcountId(),
+                reverseLedgerEntryCommand.destinationAccountId(),
+                reverseLedgerEntryCommand.transactionType());
+        try {
+            List<Ledger> ledgerEntries = new ArrayList<>();
+            ledgerEntries.add(new Ledger(reverseLedgerEntryCommand.paymentId()
+                    , sourceDestinationAccountIds.get("sourceAccountId")
+                    , reverseLedgerEntryCommand.amount()
+                    , reverseLedgerEntryCommand.currency()
+                    , true));
+
+            ledgerEntries.add(new Ledger(reverseLedgerEntryCommand.paymentId()
+                    , sourceDestinationAccountIds.get("destinationAccountId")
+                    , reverseLedgerEntryCommand.amount()
+                    , reverseLedgerEntryCommand.currency()
+                    , false));
+            this.ledgerRepository.saveAllAndFlush(ledgerEntries);
+
+            LedgerEntriesReversedEvent ledgerEntriesReversedEvent = new LedgerEntriesReversedEvent(
+                    reverseLedgerEntryCommand.paymentId().toString(),
+                    sourceDestinationAccountIds.get("sourceAccountId"),
+                    sourceDestinationAccountIds.get("destinationAccountId"),
+                    reverseLedgerEntryCommand.amount(),
+                    reverseLedgerEntryCommand.currency(),
+                    reverseLedgerEntryCommand.transactionType(),
+                    Instant.now()
+            );
+
+            buildMessageEnvelopeAndPushToOutbox(ledgerEntriesReversedEvent,
+                    correlationId,
+                    causationId,
+                    sagaId);
+        }catch(DataIntegrityViolationException dataIntegrityViolationException){
+            LedgerEntriesReversalFailedEvent ledgerEntriesReversalFailedEvent = new LedgerEntriesReversalFailedEvent(
+                    sourceDestinationAccountIds.get("sourceAccountId"),
+                    sourceDestinationAccountIds.get("destinationAccountId"),
+                    reverseLedgerEntryCommand.paymentId(),
+                    reverseLedgerEntryCommand.transactionType(),
+                    LedgerErrorCode.LEDGER_ENTRY_ALREADY_EXISTS.getErrorCode(),
+                    LedgerErrorCode.LEDGER_ENTRY_ALREADY_EXISTS.getErrorMessage(),
+                    LedgerErrorCode.LEDGER_ENTRY_ALREADY_EXISTS.isRetryable(),
+                    Instant.now());
+            buildMessageEnvelopeAndPushToOutbox(ledgerEntriesReversalFailedEvent,
                     correlationId,
                     causationId,
                     sagaId);
@@ -150,18 +205,16 @@ public class LedgerService {
         return this.ledgerAccountRepository.findByAccountCode(accountCode).getId();
     }
 
-    private Map<String,UUID> resolveSourceDestinationAccountIds(CreateLedgerEntryCommand
-                            createLedgerEntryCommand){
+    private Map<String,UUID> resolveSourceDestinationAccountIds(UUID sourceAccountId,
+                                UUID destinationAccountId, TransactionType transactionType){
         Map<String,UUID> accountIds = new HashMap<>();
 
-        switch(createLedgerEntryCommand.transactionType()){
+        switch(transactionType){
             case DEPOSIT -> {
 //                LedgerEntryRequest ledgerEntryRequest = createLedgerEntryCommand.ledgerEntryRequests().stream()
 //                        .filter(request -> request.getLedgerEntryType()
 //                                .equals(LedgerEntryType.CREDIT)).findFirst().orElse(null);
-                UUID destinationAccountId = createLedgerEntryCommand.destinationAccountId();
-                UUID sourceAccountId =  fetchIdByAccountCode(AccountCode.PLATFORM_BANK);
-                accountIds.put("sourceAccountId",sourceAccountId);
+                accountIds.put("sourceAccountId",fetchIdByAccountCode(AccountCode.PLATFORM_BANK));
                 accountIds.put("destinationAccountId",destinationAccountId);
 
             }
@@ -169,10 +222,8 @@ public class LedgerService {
 //                LedgerEntryRequest ledgerEntryRequest = createLedgerEntryCommand.ledgerEntryRequests().stream()
 //                        .filter(request -> request.getLedgerEntryType()
 //                                .equals(LedgerEntryType.DEBIT)).findFirst().orElse(null);
-                UUID sourceAccountId = createLedgerEntryCommand.sourceAcountId();
-                UUID destinationAccountId = fetchIdByAccountCode(AccountCode.PLATFORM_BANK);
                 accountIds.put("sourceAccountId",sourceAccountId);
-                accountIds.put("destinationAccountId",destinationAccountId);
+                accountIds.put("destinationAccountId",fetchIdByAccountCode(AccountCode.PLATFORM_BANK));
             }
             case TRANSFER -> {
 //                Map<LedgerEntryType, List<LedgerEntryRequest>> sourceDestinationLedgerEntries = createLedgerEntryCommand.ledgerEntryRequests().stream()
@@ -180,11 +231,9 @@ public class LedgerService {
 //                LedgerEntryRequest sourceLedgerEntryRequest = sourceDestinationLedgerEntries
 //                        .get(LedgerEntryType.DEBIT).stream()
 //                        .findFirst().orElse(null);
-                UUID sourceAccountId = createLedgerEntryCommand.sourceAcountId();
 //                LedgerEntryRequest destinationLedgerEntryRequest = sourceDestinationLedgerEntries
 //                        .get(LedgerEntryType.CREDIT).stream()
 //                        .findFirst().orElse(null);
-                UUID destinationAccountId = createLedgerEntryCommand.destinationAccountId();
                 accountIds.put("sourceAccountId",sourceAccountId);
                 accountIds.put("destinationAccountId",destinationAccountId);
             }

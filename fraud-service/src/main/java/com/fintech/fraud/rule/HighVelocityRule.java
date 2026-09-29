@@ -1,6 +1,6 @@
 package com.fintech.fraud.rule;
 
-import com.fintech.fraud.dto.HistoricalTransaction;
+import com.fintech.fraudcontract.dto.HistoricalTransaction;
 
 import java.math.BigDecimal;
 import java.time.Instant;

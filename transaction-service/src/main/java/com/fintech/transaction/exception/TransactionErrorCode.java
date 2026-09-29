@@ -14,7 +14,8 @@ public enum TransactionErrorCode implements ErrorCode {
     SOURCE_ACCOUNT_NOT_ACTIVE("TRANSACTION_008","Source account not active.",ErrorType.BUSINESS,false),
     DESTINATION_ACCOUNT_NOT_ACTIVE("TRANSACTION_009","Destination account not active.",ErrorType.BUSINESS,false),
     INVALID_SOURCE_ACCOUNT("TRANSACTION_010","Customer not authorized to access source account.",ErrorType.BUSINESS,false),
-    VALIDATION_FAILED("TRANSACTION_011","Transaction aborted due to failed validation!",ErrorType.TECHNICAL,false);
+    VALIDATION_FAILED("TRANSACTION_011","Transaction aborted due to failed validation!",ErrorType.TECHNICAL,false),
+    DESTINATION_NOT_BENEFICIARY("TRANSACTION_012","Destination account is not a beneficiary of source account.",ErrorType.BUSINESS,false);
 
     private final String errorCode;
     private final String errorMessage;

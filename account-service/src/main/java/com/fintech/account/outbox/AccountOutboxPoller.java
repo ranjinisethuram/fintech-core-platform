@@ -2,16 +2,15 @@ package com.fintech.account.outbox;
 
 import com.fintech.common.messaging.KafkaEventProducer;
 import com.fintech.outbox.OutboxPoller;
-import com.fintech.outbox.OutboxStatus;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
-import java.util.UUID;
 
 @Component
 public class AccountOutboxPoller extends OutboxPoller<AccountOutboxEvent> {
@@ -57,7 +56,6 @@ public class AccountOutboxPoller extends OutboxPoller<AccountOutboxEvent> {
     }
 
     @Override
-    @Transactional
     protected void markFailed(AccountOutboxEvent event) {
         accountOutboxService.markFailed(event);
     }

@@ -22,6 +22,7 @@ import com.fintech.transaction.exception.TransactionErrorCode;
 import com.fintech.transaction.feign.account.AccountValidationAdapter;
 import com.fintech.transaction.outbox.TransactionOutboxEvent;
 import com.fintech.transaction.outbox.TransactionOutboxRepository;
+import com.fintech.transaction.repository.ProcessedMessagesRepository;
 import com.fintech.transaction.repository.TransactionRepository;
 import com.fintech.transactioncontract.dto.TransactionHistory;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -42,17 +43,21 @@ public class TransactionService {
     private final AccountValidationAdapter accountAdapter;
     private final MessageEnvelopeFactory messageEnvelopeFactory;
     private final SagaContextMapper sagaContextMapper;
+    private final ProcessedMessagesRepository processedMessagesRepository;
+    private final com.fintech.transaction.feign.customer.CustomerClientWrapper customerClientWrapper;
 
     private static final UUID NIL_UUID = new UUID(0L, 0L);
 
     public TransactionService(TransactionRepository transactionRepository, TransactionOutboxRepository transactionOutboxRepository, OutboxMapper mapper
-            , AccountValidationAdapter accountAdapter, MessageEnvelopeFactory messageEnvelopeFactory, SagaContextMapper sagaContextMapper) {
+            , AccountValidationAdapter accountAdapter, MessageEnvelopeFactory messageEnvelopeFactory, SagaContextMapper sagaContextMapper, ProcessedMessagesRepository processedMessagesRepository, com.fintech.transaction.feign.customer.CustomerClientWrapper customerClientWrapper) {
         this.transactionRepository = transactionRepository;
         this.transactionOutboxRepository = transactionOutboxRepository;
         this.mapper = mapper;
         this.accountAdapter = accountAdapter;
         this.messageEnvelopeFactory = messageEnvelopeFactory;
         this.sagaContextMapper = sagaContextMapper;
+        this.processedMessagesRepository = processedMessagesRepository;
+        this.customerClientWrapper = customerClientWrapper;
     }
 
     @Transactional
@@ -72,8 +77,10 @@ public class TransactionService {
             TransactionInitiatedEvent transactionInitiatedEvent = new TransactionInitiatedEvent(
                     requestId,
                     transactionId.toString(),
-                    transaction.getSourceAccountId().toString(),
-                    transaction.getDestinationAccountId().toString(),
+                    transaction.getSourceAccountId() == null
+                            ? "" : transaction.getSourceAccountId().toString(),
+                    transaction.getDestinationAccountId() == null
+                            ? "" : transaction.getDestinationAccountId().toString(),
                     transaction.getAmount(),
                     transaction.getCurrency(),
                     TransactionType.DEPOSIT);
@@ -110,8 +117,10 @@ public class TransactionService {
             TransactionInitiatedEvent transactionInitiatedEvent = new TransactionInitiatedEvent(
                     requestId,
                     transactionId.toString(),
-                    transaction.getSourceAccountId().toString(),
-                    transaction.getDestinationAccountId().toString(),
+                    transaction.getSourceAccountId() == null
+                            ? "" : transaction.getSourceAccountId().toString(),
+                    transaction.getDestinationAccountId() == null
+                            ? "" : transaction.getDestinationAccountId().toString(),
                     transaction.getAmount(),
                     transaction.getCurrency(),
                     TransactionType.WITHDRAWAL);
@@ -138,6 +147,19 @@ public class TransactionService {
         boolean isValid = isAccountValid(transactionRequest,customerId, TransactionType.TRANSFER);
         if(!isValid){
             throw new BaseException(TransactionErrorCode.TRANSACTION_INITIATION_FAILED);
+        }
+        // Ensure destination account is a beneficiary of the source account's owner (customerId)
+        boolean isBeneficiary = true;
+        try{
+            com.fintech.customercontract.dto.CustomerProfile profile = this.customerClientWrapper.fetchCustomerProfile(customerId).join();
+            isBeneficiary = profile.getBeneficiaries() != null && profile.getBeneficiaries().stream()
+                    .anyMatch(b -> b.getAccountId().equals(transactionRequest.getDestinationAccountId().toString()));
+        }catch(Exception ex){
+            // if unable to fetch customer profile, treat as internal error
+            throw new BaseException(CommonErrorCode.INTERNAL_ERROR);
+        }
+        if(!isBeneficiary){
+            throw new BaseException(TransactionErrorCode.DESTINATION_NOT_BENEFICIARY);
         }
         Transaction transaction = new Transaction(customerId,transactionRequest.getSourceAccountId()
                 , transactionRequest.getDestinationAccountId(), transactionRequest.getAmount()
@@ -270,6 +292,10 @@ public class TransactionService {
         return resp;
     }
 
+    @Transactional
+    public int insertIntoProcessedMessages(String messageId){
+        return this.processedMessagesRepository.insert(messageId, Instant.now());
+    }
     private boolean isAccountValid(TransactionRequest transactionRequest, UUID customerId,
                                    TransactionType transactionType) {
         AccountValidationRequest accountValidationRequest = new AccountValidationRequest();

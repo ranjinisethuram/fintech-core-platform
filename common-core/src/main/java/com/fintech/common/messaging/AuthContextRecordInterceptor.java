@@ -28,23 +28,26 @@ public class AuthContextRecordInterceptor implements RecordInterceptor<String, O
 
     @Override
     public @Nullable ConsumerRecord<String, Object> intercept(ConsumerRecord<String, Object> record, Consumer<String, Object> consumer) {
-        Header header = record.headers().lastHeader("auth-context");
 
-        if (header != null) {
-            try {
-                String json = new String(header.value(), StandardCharsets.UTF_8);
-                AuthContext ctx = jsonMapper.readValue(json, AuthContext.class);
+        if(record != null && record.headers() != null)  {
+            Header header = record.headers().lastHeader("auth-context");
 
-                Authentication auth = buildAuthentication(ctx);
+            if (header != null) {
+                try {
+                    String json = new String(header.value(), StandardCharsets.UTF_8);
+                    AuthContext ctx = jsonMapper.readValue(json, AuthContext.class);
 
-                SecurityContextHolder.getContext().setAuthentication(auth);
+                    Authentication auth = buildAuthentication(ctx);
 
-            } catch (Exception e) {
-                throw new RuntimeException("Invalid auth context", e);
+                    SecurityContextHolder.getContext().setAuthentication(auth);
+
+                } catch (Exception e) {
+                    throw new RuntimeException("Invalid auth context", e);
+                }
             }
         }
-
         return record;
+
     }
 
     @Override

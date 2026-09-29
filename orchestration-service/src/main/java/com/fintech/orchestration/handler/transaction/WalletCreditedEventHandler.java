@@ -32,7 +32,7 @@ public class WalletCreditedEventHandler implements MessageHandler {
     public void handle(MessageEnvelope<?> envelope) {
         int rowsInserted = processedMessagesRepository.insert(envelope.getMessageId(), Instant.now());
         if(rowsInserted != 0){
-            this.sagaLifeCycleManager.complete(envelope.getSagaId(), StepId.CREDIT_WALLET);
+            this.sagaLifeCycleManager.complete(envelope, StepId.CREDIT_WALLET);
         }
     }
 }

@@ -1,4 +1,4 @@
-package com.fintech.fraud.dto;
+package com.fintech.fraudcontract.dto;
 
 import java.math.BigDecimal;
 import java.time.Instant;

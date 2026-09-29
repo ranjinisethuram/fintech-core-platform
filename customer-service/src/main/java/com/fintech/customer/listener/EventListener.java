@@ -28,12 +28,13 @@ public class EventListener {
         this.jsonMapper = jsonMapper;
     }
 
-    @KafkaListener(topics = {"account-events","wallet-events","ledger-events"},
+    @KafkaListener(topics = {"account-events","wallet-events","ledger-events", "orchestration-events"},
             groupId = "customer-service",
             filter = "kafkaEventFilterForCustomer")
     public void handle(MessageEnvelope<?> messageEnvelope){
-        int rowsInserted = processedMessagesRepository
-                .insert(messageEnvelope.getMessageId(), Instant.now());
+        int rowsInserted = customerService.insertIntoProcessedMessages(
+                messageEnvelope.getMessageId()
+        );
         if(rowsInserted == 0) {
             return;
         }
@@ -58,7 +59,8 @@ public class EventListener {
         }else if(messageEnvelope.getPayload() instanceof AccountCreationSagaFailedEvent ||
         messageEnvelope.getPayload() instanceof WalletCreationFailedEvent ||
         messageEnvelope.getPayload() instanceof  LedgerAccountCreationFailedEvent ||
-        messageEnvelope.getPayload() instanceof  AccountActivationFailedEvent) {
+        messageEnvelope.getPayload() instanceof  AccountActivationFailedEvent ||
+        messageEnvelope.getPayload() instanceof OrchestrationErrorEvent) {
             //Customer onboarding failed
             String jsonStr = this.jsonMapper.writeValueAsString(messageEnvelope.getPayload());
             JsonNode rootNode = jsonMapper.readTree(jsonStr);

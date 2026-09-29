@@ -10,7 +10,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
-public record LedgerEntriesReverseFailedEvent(
+public record LedgerEntriesReversalFailedEvent(
         UUID fromAccount,
         UUID toAccount,
         UUID transactionId,

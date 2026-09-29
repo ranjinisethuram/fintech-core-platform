@@ -1,5 +1,6 @@
 package com.fintech.fraud.dto;
 
+import com.fintech.fraudcontract.dto.HistoricalTransaction;
 import jakarta.validation.constraints.NotNull;
 
 import java.math.BigDecimal;

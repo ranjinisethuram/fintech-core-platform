@@ -3,7 +3,7 @@ package com.fintech.orchestration.handler.customeronboarding;
 import com.fintech.common.event.WalletCreatedEvent;
 import com.fintech.common.messaging.MessageEnvelope;
 import com.fintech.common.messaging.MessageHandler;
-import com.fintech.orchestration.contextmapper.CustomerOnboardingContext;
+import com.fintech.common.orchestration.contextmapper.CustomerOnboardingContext;
 import com.fintech.orchestration.domain.*;
 import com.fintech.orchestration.engine.OrchestrationEngine;
 import com.fintech.orchestration.engine.SagaLifeCycleManager;
@@ -35,7 +35,7 @@ public class WalletCreatedEventHandler implements MessageHandler {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = "transactionManager")
     public void handle(MessageEnvelope<?> envelope) {
         int rowsInserted = processedMessagesRepository.insert(envelope.getMessageId(), Instant.now());
         if(rowsInserted != 0){
@@ -47,7 +47,7 @@ public class WalletCreatedEventHandler implements MessageHandler {
             if(sagaContext != null){
                 customerOnboardingContext = sagaService.
                         loadSagaContext(sagaContext.getContextJson(), CustomerOnboardingContext.class);
-                customerOnboardingContext.setWalletId(walletCreatedEvent.walletId());
+                customerOnboardingContext.setWalletId(UUID.fromString(walletCreatedEvent.walletId()));
                 customerOnboardingContext.setCurrency(walletCreatedEvent.currency());
             }
 

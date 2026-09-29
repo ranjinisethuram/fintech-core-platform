@@ -27,14 +27,14 @@ public class AccountCreationSagaFailedEventHandler implements MessageHandler {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = "transactionManager")
     public void handle(MessageEnvelope<?> envelope) {
         int rowsInserted = processedMessagesRepository.insert(envelope.getMessageId(), Instant.now());
         if(rowsInserted != 0) {
             //this.sagaService.handleAccountCreationSagaFailure(envelope,currentSaga);
             AccountCreationSagaFailedEvent accountCreationSagaFailedEvent =
                     (AccountCreationSagaFailedEvent)envelope.getPayload();
-            this.sagaLifeCycleManager.fail(envelope.getSagaId(),
+            this.sagaLifeCycleManager.fail(envelope,
                     accountCreationSagaFailedEvent.retryable(),
                     accountCreationSagaFailedEvent.reason());
         }

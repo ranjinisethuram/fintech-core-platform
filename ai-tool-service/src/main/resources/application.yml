@@ -1,0 +1,98 @@
+server:
+  port: 8088
+
+clients:
+  wallet-service:
+    url: http://localhost:8081
+  transaction-service:
+    url: http://localhost:8082
+
+keycloak:
+  token-url: http://localhost:8180/realms/fintech/protocol/openid-connect/token
+  client-id: fintech-client
+  client-secret: tBCgqZX6GM0Irm9q0VCWHhFhFBpqAuOR
+
+spring:
+  application:
+    name: ai-tool-service
+  datasource:
+    url: jdbc:postgresql://localhost:5432/transaction_db
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        jdbc:
+          time_zone: UTC
+  cloud:
+    circuitbreaker:
+      bulkhead:
+        resilience4j:
+          enabled: false
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:9090/realms/fintech-realm
+
+logging:
+  level:
+    root: INFO
+    org.hibernate.SQL: WARN
+
+feign:
+  client:
+    config:
+      wallet-service:
+        connectTimeout: ${WALLET_CONNECT_TIMEOUT:1500}
+        readTimeout: ${WALLET_READ_TIMEOUT:2500}
+      transaction-service:
+        connectTimeout: ${TRANSACTION_CONNECT_TIMEOUT:1500}
+        readTimeout: ${TRANSACTION_READ_TIMEOUT:2500}
+
+resilience4j:
+  circuitbreaker:
+    metrics:
+      enabled: false
+    instances:
+      walletServiceCB:
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s
+      transactionServiceCB:
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s
+
+  retry:
+    instances:
+      walletServiceRetry:
+        max-attempts: 3
+        wait-duration: 500ms
+        retry-exceptions:
+          - java.io.IOException
+          - feign.RetryableException
+      transactionServiceRetry:
+        max-attempts: 3
+        wait-duration: 500ms
+        retry-exceptions:
+          - java.io.IOException
+          - feign.RetryableException
+
+  timelimiter:
+    instances:
+      walletServiceTL:
+        timeout-duration: 3s
+      transactionServiceTL:
+        timeout-duration: 3s
+
+  keycloak:
+    token-url: http://localhost:9090/realms/fintech-realm/protocol/openid-connect/token
+    client-id: fintech-client
+    client-secret: tBCgqZX6GM0Irm9q0VCWHhFhFBpqAuOR

@@ -32,7 +32,7 @@ public class WalletFundCommittedEventHandler implements MessageHandler {
     public void handle(MessageEnvelope<?> envelope) {
         int rowsInserted = processedMessagesRepository.insert(envelope.getMessageId(), Instant.now());
         if(rowsInserted != 0){
-            this.sagaLifeCycleManager.complete(envelope.getSagaId(), StepId.COMMIT_FUNDS);
+            this.sagaLifeCycleManager.complete(envelope, StepId.COMMIT_FUNDS);
         }
     }
 }

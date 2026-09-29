@@ -4,7 +4,10 @@ import com.fintech.common.messaging.KafkaEventProducer;
 import org.apache.kafka.common.errors.AuthenticationException;
 import org.apache.kafka.common.errors.AuthorizationException;
 import org.apache.kafka.common.errors.SerializationException;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 
 import java.util.List;
@@ -13,9 +16,13 @@ import java.util.UUID;
 public  abstract class OutboxPoller<T extends BaseOutboxEvent> {
 
     private final KafkaEventProducer kafkaEventProducer;
+//    private final PlatformTransactionManager transactionManager;
+//    private final KafkaTemplate kafkaTemplate;
 
     protected OutboxPoller(KafkaEventProducer kafkaEventProducer) {
         this.kafkaEventProducer = kafkaEventProducer;
+//        this.transactionManager = transactionManager;
+//        this.kafkaTemplate = kafkaTemplate;
     }
 
     protected abstract List<T> fetchBatchAndMarkInProgress();

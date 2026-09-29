@@ -1,4 +1,4 @@
-package com.fintech.orchestration.contextmapper;
+package com.fintech.common.orchestration.contextmapper;
 
 import com.fintech.common.domain.Currency;
 

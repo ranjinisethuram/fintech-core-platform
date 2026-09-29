@@ -3,7 +3,7 @@ package com.fintech.orchestration.handler.customeronboarding;
 import com.fintech.common.event.LedgerAccountCreatedEvent;
 import com.fintech.common.messaging.MessageEnvelope;
 import com.fintech.common.messaging.MessageHandler;
-import com.fintech.orchestration.contextmapper.CustomerOnboardingContext;
+import com.fintech.common.orchestration.contextmapper.CustomerOnboardingContext;
 import com.fintech.orchestration.domain.Saga;
 import com.fintech.orchestration.domain.SagaContext;
 import com.fintech.orchestration.domain.StepId;
@@ -38,7 +38,7 @@ public class LedgerAccountCreatedEventHandler implements MessageHandler {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = "transactionManager")
     public void handle(MessageEnvelope<?> envelope) {
         int rowsInserted = processedMessagesRepository.insert(envelope.getMessageId(), Instant.now());
         if(rowsInserted != 0){

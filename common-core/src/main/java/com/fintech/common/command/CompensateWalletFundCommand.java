@@ -14,8 +14,7 @@ public record CompensateWalletFundCommand(
         UUID paymentId,
         BigDecimal amount,
         Currency currency,
-        TransactionType transactionType,
-        String reason
+        TransactionType transactionType
 )implements AggregateMessage {
     @Override
     @JsonProperty("aggregateId") // Maps getAggregateId() result to JSON

@@ -1,32 +1,36 @@
 package com.fintech.orchestration.service;
 
-import com.fintech.common.command.*;
-import com.fintech.common.domain.LedgerEntryRequest;
-import com.fintech.common.domain.LedgerEntryType;
+import com.fintech.common.domain.SagaContextType;
 import com.fintech.common.event.*;
 import com.fintech.common.exception.BaseException;
 import com.fintech.common.exception.ErrorCode;
 import com.fintech.common.messaging.AggregateMessage;
 import com.fintech.common.messaging.MessageEnvelope;
 import com.fintech.common.messaging.MessageEnvelopeFactory;
-import com.fintech.orchestration.contextmapper.*;
+import com.fintech.common.orchestration.contextmapper.SagaContextMapper;
+import com.fintech.fraudcontract.dto.HistoricalTransaction;
+import com.fintech.fraudcontract.dto.HistoricalTransactionBuilder;
 import com.fintech.orchestration.domain.*;
 import com.fintech.orchestration.exception.OrchestrationErrorCode;
+import com.fintech.orchestration.feign.transaction.TransactionQueryAdapter;
 import com.fintech.orchestration.outbox.SagaOutbox;
 import com.fintech.orchestration.outbox.SagaOutboxRepository;
 import com.fintech.orchestration.repository.SagaContextRepository;
 import com.fintech.orchestration.repository.SagaErrorRepository;
 import com.fintech.orchestration.repository.SagaRepository;
 import com.fintech.outbox.OutboxMapper;
+import com.fintech.transactioncontract.dto.TransactionHistory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class SagaService {
@@ -38,12 +42,13 @@ public class SagaService {
     private final SagaContextMapper sagaContextMapper;
     private final SagaContextRepository sagaContextRepository;
     private final SagaErrorRepository sagaErrorRepository;
+    private final TransactionQueryAdapter transactionQueryAdapter;
 
     @Value("${saga.retry.limit:3}")
     private int retryLimit;
 
     public SagaService(SagaRepository sagaRepository, SagaOutboxRepository sagaOutboxRepository,
-                       OutboxMapper outboxMapper, MessageEnvelopeFactory messageEnvelopeFactory, SagaContextMapper sagaContextMapper, SagaContextRepository sagaContextRepository, SagaErrorRepository sagaErrorRepository) {
+                       OutboxMapper outboxMapper, MessageEnvelopeFactory messageEnvelopeFactory, SagaContextMapper sagaContextMapper, SagaContextRepository sagaContextRepository, SagaErrorRepository sagaErrorRepository, TransactionQueryAdapter transactionQueryAdapter) {
         this.sagaRepository = sagaRepository;
         this.sagaOutboxRepository = sagaOutboxRepository;
         this.outboxMapper = outboxMapper;
@@ -51,6 +56,7 @@ public class SagaService {
         this.sagaContextMapper = sagaContextMapper;
         this.sagaContextRepository = sagaContextRepository;
         this.sagaErrorRepository = sagaErrorRepository;
+        this.transactionQueryAdapter = transactionQueryAdapter;
     }
 
     public Saga startSaga(String correlationId, String aggregateId
@@ -91,8 +97,18 @@ public class SagaService {
         return sagaRepository.save(sagaToUpdate);
     }
 
+    public Saga updateSagaCompensated(Saga sagaToUpdate){
+        sagaToUpdate.compensated();
+        return sagaRepository.save(sagaToUpdate);
+    }
+
+    public Saga updateSagaCompensationFailed(Saga sagaToUpdate, String failureReason) {
+        sagaToUpdate.compensationFailed(failureReason);
+        return sagaRepository.save(sagaToUpdate);
+    }
+
     public void createSagaContext(UUID sagaId,
-                                       SagaContextType sagaContextType, Object sagaContext){
+                                  SagaContextType sagaContextType, Object sagaContext){
         boolean isSagaContextExists = this.sagaContextRepository.existsById(sagaId);
         if(isSagaContextExists)
             throw new BaseException(OrchestrationErrorCode.ORCH_SAGA_CONTEXT_ALREADY_AVAILABLE);
@@ -123,6 +139,19 @@ public class SagaService {
         this.sagaErrorRepository.saveAndFlush(sagaError);
     }
 
+    public List<HistoricalTransaction> fetchLast30DaysTransactionHistory(UUID sourceAccountId) {
+        List<TransactionHistory> transactionHistoryList = this.transactionQueryAdapter.fetchTransactionHistory(sourceAccountId,
+                Instant.now().minus(30, ChronoUnit.DAYS));
+        List<HistoricalTransaction> historicalTransactionList = transactionHistoryList.stream().map(transactionHistory ->
+                new HistoricalTransaction(
+                        transactionHistory.getAmount(),
+                        transactionHistory.getTimestamp()
+        )).collect(Collectors.toList());
+        HistoricalTransactionBuilder historicalTransactionBuilder = new HistoricalTransactionBuilder();
+        historicalTransactionBuilder.addTransactions(historicalTransactionList);
+        return historicalTransactionBuilder.build();
+    }
+
     @Transactional
     public void handleSagaProcessingException(MessageEnvelope<?> messageEnvelope, ErrorCode errorCode){
         //emit failed event to kafka
@@ -139,7 +168,7 @@ public class SagaService {
                 messageEnvelope.getAggregateId(),messageEnvelope.getCorrelationId()
                 ,errorCode.getErrorMessage(), Instant.now());
         buildMessageEnvelopeAndPushToOutbox(orchestrationErrorEvent, messageEnvelope.getCorrelationId(),
-                messageEnvelope.getMessageId(),messageEnvelope.getSagaId(), true);
+                messageEnvelope.getMessageId(),messageEnvelope.getSagaId(), "orchestration-events");
     }
 
 //    public void publishCreateAccountCommandToOutbox(Saga sagaSaved, MessageEnvelope<?> envelope){
@@ -372,9 +401,43 @@ public class SagaService {
 //        this.sagaRepository.save(currentSaga);
 //    }
 
+    public void publishSagaFailedEvent(MessageEnvelope<?> envelope, Saga saga, String failureReason, boolean isCompensated){
+        SagaContext sagaContext = this.fetchSagaContext(saga.getSagaId());
+        String sagaContextJson = this.sagaContextMapper.toJson(sagaContext);
+        SagaFailedEvent sagaFailedEvent = new SagaFailedEvent(
+                    saga.getSagaId().toString(),
+                    sagaContextJson,
+                    sagaContext.getSagaContextType(),
+                    failureReason,
+                    isCompensated,
+                    Instant.now()
+            );
+        buildMessageEnvelopeAndPushToOutbox(sagaFailedEvent, saga.getCorrelationId(),
+               envelope.getMessageId(),
+                saga.getSagaId().toString(),
+                "orchestration-events"
+                );
+    }
+
+    public void publishSagaSucceededEvent(MessageEnvelope<?> envelope, Saga saga) {
+        SagaContext sagaContext = this.fetchSagaContext(saga.getSagaId());
+        String sagaContextJson = this.sagaContextMapper.toJson(sagaContext);
+        SagaSucceededEvent sagaSucceededEvent = new SagaSucceededEvent(
+                saga.getSagaId().toString(),
+                sagaContextJson,
+                sagaContext.getSagaContextType(),
+                Instant.now()
+        );
+        buildMessageEnvelopeAndPushToOutbox(sagaSucceededEvent, saga.getCorrelationId(),
+                envelope.getMessageId(),
+                saga.getSagaId().toString(),
+                "orchestration-events"
+        );
+    }
+
     public <T extends AggregateMessage> void buildMessageEnvelopeAndPushToOutbox(T eventMessage
             , String correlationId, String causationId, String sagaId,
-             String topicName, boolean forOrchestration) {
+             String topicName) {
         MessageEnvelope<T> messageEnvelope =
                 this.messageEnvelopeFactory
                         .build(correlationId,
@@ -389,7 +452,7 @@ public class SagaService {
                 );
 //        String topicName = forOrchestration ? "orchestration-events"
 //                : messageEnvelope.getAggregateType().toLowerCase()+"-commands";
-        outboxEvent.setTopicName(forOrchestration ? "orchestration-events" : topicName);
+        outboxEvent.setTopicName(topicName);
         this.sagaOutboxRepository.saveAndFlush(outboxEvent);
     }
 

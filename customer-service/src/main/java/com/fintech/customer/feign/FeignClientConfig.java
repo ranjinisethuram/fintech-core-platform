@@ -26,7 +26,7 @@ public class FeignClientConfig {
             }
 
             String token = keycloakTokenService.getToken();
-
+            System.out.println("Bearer Token is : "+token);
             requestTemplate.header("Authorization", "Bearer " + token);
         };
     }

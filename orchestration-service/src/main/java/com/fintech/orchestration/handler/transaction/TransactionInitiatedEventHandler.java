@@ -4,9 +4,9 @@ import com.fintech.common.domain.TransactionType;
 import com.fintech.common.event.TransactionInitiatedEvent;
 import com.fintech.common.messaging.MessageEnvelope;
 import com.fintech.common.messaging.MessageHandler;
-import com.fintech.orchestration.contextmapper.TransactionHandlingContext;
+import com.fintech.common.orchestration.contextmapper.TransactionHandlingContext;
 import com.fintech.orchestration.domain.Saga;
-import com.fintech.orchestration.domain.SagaContextType;
+import com.fintech.common.domain.SagaContextType;
 import com.fintech.orchestration.engine.OrchestrationEngine;
 import com.fintech.orchestration.engine.SagaLifeCycleManager;
 import com.fintech.orchestration.repository.ProcessedMessagesRepository;
@@ -14,6 +14,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.UUID;
 
 @Component
 public class TransactionInitiatedEventHandler implements MessageHandler {
@@ -52,11 +53,12 @@ public class TransactionInitiatedEventHandler implements MessageHandler {
             TransactionInitiatedEvent transactionInitiatedEvent,
             TransactionType transactionType){
         TransactionHandlingContext transactionHandlingContext = new TransactionHandlingContext();
-        transactionHandlingContext.setTransactionId(transactionInitiatedEvent.transactionId());
+        transactionHandlingContext.setRequestId(transactionInitiatedEvent.requestId());
+        transactionHandlingContext.setTransactionId(UUID.fromString(transactionInitiatedEvent.transactionId()));
         transactionHandlingContext.setAmount(transactionInitiatedEvent.amount());
         transactionHandlingContext.setCurrency(transactionInitiatedEvent.currency());
-        transactionHandlingContext.setSourceAccountId(transactionInitiatedEvent.sourceAccountId());
-        transactionHandlingContext.setDestinationAccountId(transactionInitiatedEvent.destinationAccountId());
+        transactionHandlingContext.setSourceAccountId(UUID.fromString(transactionInitiatedEvent.sourceAccountId()));
+        transactionHandlingContext.setDestinationAccountId(UUID.fromString(transactionInitiatedEvent.destinationAccountId()));
         transactionHandlingContext.setTransactionType(transactionType);
         return transactionHandlingContext;
     }

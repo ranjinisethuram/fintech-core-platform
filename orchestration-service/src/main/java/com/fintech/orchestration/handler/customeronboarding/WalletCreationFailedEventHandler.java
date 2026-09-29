@@ -27,13 +27,13 @@ public class WalletCreationFailedEventHandler implements MessageHandler {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = "transactionManager")
     public void handle(MessageEnvelope<?> envelope) {
         int rowsInserted = processedMessagesRepository.insert(envelope.getMessageId(), Instant.now());
         if(rowsInserted != 0) {
             WalletCreationFailedEvent walletCreationFailedEvent =
                     (WalletCreationFailedEvent)envelope.getPayload();
-            this.sagaLifeCycleManager.fail(envelope.getSagaId(),
+            this.sagaLifeCycleManager.fail(envelope,
                     walletCreationFailedEvent.retryable(),
                     walletCreationFailedEvent.reason());
         }

@@ -33,7 +33,7 @@ public class WalletFundTransferFailedEventHandler implements MessageHandler {
         if(rowsInserted != 0){
             WalletFundTransferFailedEvent walletFundTransferFailedEvent =
                     (WalletFundTransferFailedEvent) envelope.getPayload();
-            this.sagaLifeCycleManager.fail(envelope.getSagaId(),
+            this.sagaLifeCycleManager.fail(envelope,
                     walletFundTransferFailedEvent.retryable(),
                     walletFundTransferFailedEvent.reason());
         }

@@ -71,4 +71,8 @@ public class Account {
         this.accountStatus = accountStatus;
         this.updatedAt = Instant.now();
     }
+
+    public Instant getUpdatedAt() {
+        return updatedAt;
+    }
 }

@@ -31,6 +31,6 @@ public record CreateLedgerEntryCommand(
     @Override
     @JsonProperty("aggregateType") // Maps getAggregateType() result to JSON
     public AggregateType getAggregateType() {
-        return AggregateType.LEDGER;
+        return AggregateType.TRANSACTION;
     }
 }

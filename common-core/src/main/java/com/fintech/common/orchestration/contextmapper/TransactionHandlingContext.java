@@ -1,4 +1,4 @@
-package com.fintech.orchestration.contextmapper;
+package com.fintech.common.orchestration.contextmapper;
 
 import com.fintech.common.domain.Currency;
 import com.fintech.common.domain.TransactionType;
@@ -8,6 +8,7 @@ import java.util.UUID;
 
 public class TransactionHandlingContext {
 
+    private String requestId;
     private UUID transactionId;
     private UUID sourceAccountId;
     private UUID destinationAccountId;
@@ -61,5 +62,13 @@ public class TransactionHandlingContext {
 
     public void setTransactionType(TransactionType transactionType) {
         this.transactionType = transactionType;
+    }
+
+    public String getRequestId() {
+        return requestId;
+    }
+
+    public void setRequestId(String requestId) {
+        this.requestId = requestId;
     }
 }

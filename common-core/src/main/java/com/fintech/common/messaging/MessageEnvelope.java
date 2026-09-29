@@ -127,4 +127,23 @@ public class MessageEnvelope<T> {
     public void setAuthContext(AuthContext authContext) {
         this.authContext = authContext;
     }
+
+    @Override
+    public String toString() {
+        return "MessageEnvelope{" +
+                "messageId='" + messageId + '\'' +
+                ", eventType='" + eventType + '\'' +
+                ", aggregateType='" + aggregateType + '\'' +
+                ", aggregateId='" + aggregateId + '\'' +
+                ", sagaId='" + sagaId + '\'' +
+                ", correlationId='" + correlationId + '\'' +
+                ", causationId='" + causationId + '\'' +
+                ", occurredAt=" + occurredAt +
+                ", version='" + version + '\'' +
+                ", sourceService='" + sourceService + '\'' +
+                ", headers=" + headers +
+                ", payload=" + payload +
+                ", authContext=" + authContext +
+                '}';
+    }
 }

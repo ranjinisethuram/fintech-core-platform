@@ -3,8 +3,10 @@ package com.fintech.ledger.outbox;
 import com.fintech.common.messaging.KafkaEventProducer;
 import com.fintech.outbox.OutboxPoller;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.PlatformTransactionManager;
 
 import java.time.Instant;
 import java.util.List;
@@ -18,7 +20,8 @@ public class LedgerOutboxPoller extends OutboxPoller<LedgerOutboxEvent> {
     @Value("${outbox.poller.retry-limit:5}")
     private int retryLimit;
 
-    public LedgerOutboxPoller(KafkaEventProducer kafkaEventProducer, LedgerOutboxService ledgerOutboxService) {
+    public LedgerOutboxPoller(KafkaEventProducer kafkaEventProducer
+            , LedgerOutboxService ledgerOutboxService) {
         super(kafkaEventProducer);
         this.ledgerOutboxService = ledgerOutboxService;
     }

@@ -1,7 +1,8 @@
 package com.fintech.orchestration.engine;
 
+import com.fintech.common.domain.SagaContextType;
 import com.fintech.common.messaging.MessageEnvelope;
-import com.fintech.orchestration.contextmapper.TransactionHandlingContext;
+import com.fintech.common.orchestration.contextmapper.TransactionHandlingContext;
 import com.fintech.orchestration.domain.*;
 import com.fintech.orchestration.service.SagaService;
 import org.springframework.stereotype.Service;
@@ -14,11 +15,15 @@ public class OrchestrationEngine {
     private final SagaDefinitionRegistry sagaDefinitionRegistry;
     private final SagaStepRegistry sagaStepRegistry;
     private final SagaService sagaService;
+    private final SagaLifeCycleManager sagaLifeCycleManager;
 
-    public OrchestrationEngine(SagaDefinitionRegistry sagaDefinitionRegistry, SagaStepRegistry sagaStepRegistry, SagaService sagaService) {
+    public OrchestrationEngine(SagaDefinitionRegistry sagaDefinitionRegistry,
+                               SagaStepRegistry sagaStepRegistry,
+                               SagaService sagaService, SagaLifeCycleManager sagaLifeCycleManager) {
         this.sagaDefinitionRegistry = sagaDefinitionRegistry;
         this.sagaStepRegistry = sagaStepRegistry;
         this.sagaService = sagaService;
+        this.sagaLifeCycleManager = sagaLifeCycleManager;
     }
 
     public void process(Saga saga, String messageId) {
@@ -29,6 +34,35 @@ public class OrchestrationEngine {
     }
 
     public void recover(Saga saga, SagaContext sagaContextEntity, UUID sagaRecoveryId) {
+        // If saga is in compensation flow (compensation step index or step present), recover compensation step
+        if (saga.getCompensationStep() != null || saga.getCompensationStepIndex() != null) {
+            StepId compStepId = saga.getCompensationStep();
+            // If compensation step not set, try to rebuild from completed steps using compensationStepIndex
+            if (compStepId == null && saga.getCompletedSteps() != null && saga.getCompensationStepIndex() != null) {
+                // rebuild compensation list (reverse of completed steps)
+                for (int i = saga.getCompletedSteps().size() - 1, idx = 0; i >= 0; i--, idx++) {
+                    StepId forward = saga.getCompletedSteps().get(i);
+                    if (forward == null) continue;
+                    var forwardStep = this.sagaStepRegistry.getStep(forward);
+                    if (forwardStep != null) {
+                        var comp = forwardStep.compensationStep();
+                        if (comp.isPresent() && idx == saga.getCompensationStepIndex()) {
+                            compStepId = comp.get();
+                            break;
+                        }
+                    }
+                }
+            }
+            if (compStepId != null) {
+                SagaStep compStep = this.sagaStepRegistry.getStep(compStepId);
+                if (compStep != null) {
+                    compStep.recover(saga, sagaRecoveryId);
+                    return;
+                }
+            }
+            // If we couldn't determine compensation step, fallthrough to forward recovery for safety
+        }
+
         SagaType sagaType = getSagaType(sagaContextEntity);
         SagaStep nextStep = fetchNextStep(saga.getNextStepIndex(), sagaType);
         nextStep.recover(saga, sagaRecoveryId);

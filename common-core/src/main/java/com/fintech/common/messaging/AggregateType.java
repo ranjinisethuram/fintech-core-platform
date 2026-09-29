@@ -5,5 +5,6 @@ public enum AggregateType {
     ACCOUNT,
     WALLET,
     LEDGER,
-    TRANSACTION
+    TRANSACTION,
+    ORCHESTRATION
 }

@@ -1,4 +1,4 @@
-package com.fintech.orchestration.contextmapper;
+package com.fintech.common.orchestration.contextmapper;
 
 import com.fintech.common.exception.BaseException;
 import com.fintech.common.exception.CommonErrorCode;

@@ -32,6 +32,7 @@ public class AccountQueryClientWrapper {
 
     public CompletableFuture<CustomerAccountsResponse> accountFetchFallback(
             UUID customerId, Throwable ex) {
+        System.out.println("Exception in accountFetchCallback: "+ex.getMessage());
         throw new BaseException(CommonErrorCode.INTERNAL_ERROR,"Account Service currently unavailable");
     }
 }

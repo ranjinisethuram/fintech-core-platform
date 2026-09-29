@@ -1,8 +1,8 @@
 package com.fintech.orchestration.sagastep.transactionhandling;
 
 import com.fintech.common.command.ReserveWalletFundCommand;
-import com.fintech.orchestration.contextmapper.SagaContextMapper;
-import com.fintech.orchestration.contextmapper.TransactionHandlingContext;
+import com.fintech.common.orchestration.contextmapper.SagaContextMapper;
+import com.fintech.common.orchestration.contextmapper.TransactionHandlingContext;
 import com.fintech.orchestration.domain.Saga;
 import com.fintech.orchestration.domain.SagaContext;
 import com.fintech.orchestration.domain.StepId;
@@ -10,6 +10,7 @@ import com.fintech.orchestration.engine.SagaStep;
 import com.fintech.orchestration.service.SagaService;
 import org.springframework.stereotype.Component;
 
+import java.util.Optional;
 import java.util.UUID;
 
 @Component
@@ -38,6 +39,11 @@ public class ReserveFundsStep implements SagaStep {
         publishReserveFundsCommandToOutbox(saga, null, sagaRecoveryId, true);
     }
 
+    @Override
+    public Optional<StepId> compensationStep() {
+        return Optional.of(StepId.COMPENSATE_FUNDS);
+    }
+
     private void publishReserveFundsCommandToOutbox(Saga currentSaga,
                                                     String messageId,
                                                     UUID sagaRecoveryId, boolean forRecover) {
@@ -56,7 +62,6 @@ public class ReserveFundsStep implements SagaStep {
                 currentSaga.getCorrelationId(),
                 causationId,
                 currentSaga.getSagaId().toString(),
-                "wallet-commands",
-                false);
+                "wallet-commands");
     }
 }

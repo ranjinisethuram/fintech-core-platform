@@ -4,7 +4,7 @@ public enum TransactionStatus {
     INITIATED("INITIATED", "Transaction has been initiated."),
     SUCCESS("SUCCESS","Transaction is success."),
     FAILED("FAILED","Transaction is failed."),
-    COMPENSATED("COMPENSATED","Transaction encountered an error. It is being compensated.");
+    COMPENSATED("COMPENSATED","Transaction encountered an error. It has been compensated.");
 
     private final String status;
     private final String statusDetail;

@@ -8,6 +8,7 @@ import com.fintech.accountcontract.dto.CustomerAccountsResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -24,6 +25,7 @@ public class InternalAccountController {
     }
 
     @PostMapping(value = "/validate")
+    @PreAuthorize("hasRole('USER') and hasAuthority('SCOPE_account:validate')")
     public ResponseEntity<AccountValidationResponse> validate(@Valid @RequestBody AccountValidationRequest
                                                               accountValidationRequest){
         AccountValidationResponse accountValidationResponse = this.accountService.validateAccount
@@ -33,6 +35,7 @@ public class InternalAccountController {
     }
 
     @PostMapping(value = "/fetch")
+    @PreAuthorize("hasRole('USER') and hasAuthority('SCOPE_account:fetch')")
     public ResponseEntity<CustomerAccountsResponse> fetchCustomerAccountDetails(@RequestParam UUID customerId){
         List<AccountSummary> customerAccounts = this.accountService.fetchCustomerAccountDetails(customerId);
         CustomerAccountsResponse customerAccountsResponse = new CustomerAccountsResponse();

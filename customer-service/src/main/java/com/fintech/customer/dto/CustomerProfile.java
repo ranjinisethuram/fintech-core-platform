@@ -10,6 +10,7 @@ public class CustomerProfile {
     private String customerName;
     private String defaultAccountId;
     private List<AccountSummary> accounts;
+    private List<BeneficiaryResponse> beneficiaries;
 
 
     public String getCustomerId() {
@@ -42,5 +43,13 @@ public class CustomerProfile {
 
     public void setAccounts(List<AccountSummary> accounts) {
         this.accounts = accounts;
+    }
+
+    public java.util.List<BeneficiaryResponse> getBeneficiaries() {
+        return beneficiaries;
+    }
+
+    public void setBeneficiaries(List<BeneficiaryResponse> beneficiaries) {
+        this.beneficiaries = beneficiaries;
     }
 }

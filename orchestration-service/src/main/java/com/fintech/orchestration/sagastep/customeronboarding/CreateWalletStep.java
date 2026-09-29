@@ -1,9 +1,8 @@
 package com.fintech.orchestration.sagastep.customeronboarding;
 
 import com.fintech.common.command.CreateWalletCommand;
-import com.fintech.common.messaging.MessageEnvelope;
-import com.fintech.orchestration.contextmapper.CustomerOnboardingContext;
-import com.fintech.orchestration.contextmapper.SagaContextMapper;
+import com.fintech.common.orchestration.contextmapper.CustomerOnboardingContext;
+import com.fintech.common.orchestration.contextmapper.SagaContextMapper;
 import com.fintech.orchestration.domain.Saga;
 import com.fintech.orchestration.domain.SagaContext;
 import com.fintech.orchestration.domain.StepId;
@@ -56,7 +55,6 @@ public class CreateWalletStep implements SagaStep {
                 currentSaga.getCorrelationId(),
                 causationId,
                 currentSaga.getSagaId().toString(),
-                "wallet-commands",
-                false);
+                "wallet-commands");
     }
 }

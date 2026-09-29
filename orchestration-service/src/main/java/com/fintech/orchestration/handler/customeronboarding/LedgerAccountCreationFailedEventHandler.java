@@ -27,13 +27,13 @@ public class LedgerAccountCreationFailedEventHandler implements MessageHandler {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = "transactionManager")
     public void handle(MessageEnvelope<?> envelope) {
         int rowsInserted = processedMessagesRepository.insert(envelope.getMessageId(), Instant.now());
         if(rowsInserted != 0) {
             LedgerAccountCreationFailedEvent ledgerAccountCreationFailedEvent =
                     (LedgerAccountCreationFailedEvent)envelope.getPayload();
-            this.sagaLifeCycleManager.fail(envelope.getSagaId(),
+            this.sagaLifeCycleManager.fail(envelope,
                     ledgerAccountCreationFailedEvent.retryable(),
                     ledgerAccountCreationFailedEvent.reason());
 

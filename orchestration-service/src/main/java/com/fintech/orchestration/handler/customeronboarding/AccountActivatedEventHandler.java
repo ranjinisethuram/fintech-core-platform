@@ -27,11 +27,11 @@ public class AccountActivatedEventHandler implements MessageHandler {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = "transactionManager")
     public void handle(MessageEnvelope<?> envelope) {
         int rowsInserted = processedMessagesRepository.insert(envelope.getMessageId(), Instant.now());
         if(rowsInserted != 0){
-            this.sagaLifeCycleManager.complete(envelope.getSagaId(), StepId.ACTIVATE_ACCOUNT);
+            this.sagaLifeCycleManager.complete(envelope, StepId.ACTIVATE_ACCOUNT);
         }
 
     }

@@ -4,6 +4,7 @@ import com.fintech.common.domain.Currency;
 
 import com.fintech.common.domain.TransactionType;
 import jakarta.persistence.*;
+import org.hibernate.annotations.DynamicInsert;
 
 import java.math.BigDecimal;
 import java.time.Instant;

@@ -1,8 +1,9 @@
 package com.fintech.orchestration.sagastep.transactionhandling;
 
 import com.fintech.common.command.EvaluateFraudCommand;
-import com.fintech.orchestration.contextmapper.SagaContextMapper;
-import com.fintech.orchestration.contextmapper.TransactionHandlingContext;
+import com.fintech.fraudcontract.dto.HistoricalTransaction;
+import com.fintech.common.orchestration.contextmapper.SagaContextMapper;
+import com.fintech.common.orchestration.contextmapper.TransactionHandlingContext;
 import com.fintech.orchestration.domain.Saga;
 import com.fintech.orchestration.domain.SagaContext;
 import com.fintech.orchestration.domain.StepId;
@@ -13,6 +14,7 @@ import org.springframework.stereotype.Component;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Component
 public class EvaluateFraudStep implements SagaStep {
@@ -48,12 +50,21 @@ public class EvaluateFraudStep implements SagaStep {
         TransactionHandlingContext transactionHandlingContext =
                 this.sagaContextMapper.fromJson(sagaContextEntity.getContextJson(),
                         TransactionHandlingContext.class);
-
+        List<HistoricalTransaction> historicalTransactionList = sagaService.
+                fetchLast30DaysTransactionHistory(
+                        transactionHandlingContext.getSourceAccountId());
+        List<EvaluateFraudCommand.HistoricalTransaction> transactionHistoryList =
+                historicalTransactionList.stream()
+                        .map(transactionHistory
+                                -> new EvaluateFraudCommand.HistoricalTransaction(
+                                        transactionHistory.amount(),
+                                        transactionHistory.timestamp()))
+                        .collect(Collectors.toList());
         EvaluateFraudCommand command = new EvaluateFraudCommand(
                 transactionHandlingContext.getTransactionId(),
                 transactionHandlingContext.getAmount(),
                 Instant.now(),
-                List.of()
+                transactionHistoryList
         );
 
         String causationId = forRecover ? sagaRecoveryId.toString() : messageId;
@@ -61,7 +72,6 @@ public class EvaluateFraudStep implements SagaStep {
                 currentSaga.getCorrelationId(),
                 causationId,
                 currentSaga.getSagaId().toString(),
-                "fraud-commands",
-                false);
+                "fraud-commands");
     }
 }

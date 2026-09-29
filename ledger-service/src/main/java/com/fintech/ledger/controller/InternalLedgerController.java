@@ -6,6 +6,7 @@ import com.fintech.ledgercontract.dto.LedgerAccountValidationResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -22,6 +23,7 @@ public class InternalLedgerController {
     }
 
     @PostMapping(value = "/validate")
+    @PreAuthorize("hasRole('USER') and hasAuthority('SCOPE_validate:validate')")
     ResponseEntity<LedgerAccountValidationResponse> validateLedgerAccount(@Valid @RequestBody
                          LedgerAccountValidationRequest ledgerAccountValidationRequest){
         LedgerAccountValidationResponse ledgerAccountValidationResponse =

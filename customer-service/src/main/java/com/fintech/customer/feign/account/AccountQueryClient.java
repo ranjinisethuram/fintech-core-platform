@@ -17,6 +17,6 @@ import java.util.UUID;
 )
 public interface AccountQueryClient {
 
-    @PostMapping("/internal/accounts/fetch")
+    @PostMapping(value = "/internal/accounts/fetch")
     CustomerAccountsResponse fetchCustomerAccounts(@RequestParam UUID customerId);
 }

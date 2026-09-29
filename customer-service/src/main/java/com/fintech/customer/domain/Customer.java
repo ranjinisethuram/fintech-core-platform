@@ -77,4 +77,8 @@ public class Customer {
     private String normalize(String phoneNumber){
         return phoneNumber.replaceAll("\\s+","");
     }
+
+    public Instant getUpdatedAt() {
+        return updatedAt;
+    }
 }

@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -31,6 +32,13 @@ public class Saga {
     @Enumerated(EnumType.STRING)
     @Column(name = "saga_status", nullable = false)
     private SagaStatus sagaStatus;
+    @ElementCollection
+    @Column(name = "completed_steps")
+    private List<StepId> completedSteps;
+    @Column(name = "compenstaion_step")
+    private StepId compensationStep;
+    @Column(name = "compensation_step_index")
+    private Integer compensationStepIndex;
     @Version
     private Long version;
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -130,6 +138,12 @@ public class Saga {
         this.updatedAt = Instant.now();
     }
 
+    public void compensationFailed(String failureReason){
+        this.sagaStatus = SagaStatus.COMPENSATION_FAILED;
+        this.failureReason = failureReason;
+        this.updatedAt = Instant.now();
+    }
+
     public UUID getSagaId() {
         return sagaId;
     }
@@ -180,5 +194,29 @@ public class Saga {
 
     public String getFailureReason() {
         return failureReason;
+    }
+
+    public StepId getCompensationStep() {
+        return compensationStep;
+    }
+
+    public void setCompensationStep(StepId compensationStep) {
+        this.compensationStep = compensationStep;
+    }
+
+    public Integer getCompensationStepIndex() {
+        return compensationStepIndex;
+    }
+
+    public void setCompensationStepIndex(Integer compensationStepIndex) {
+        this.compensationStepIndex = compensationStepIndex;
+    }
+
+    public List<StepId> getCompletedSteps() {
+        return completedSteps;
+    }
+
+    public void setCompletedSteps(List<StepId> completedSteps) {
+        this.completedSteps = completedSteps;
     }
 }

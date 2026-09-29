@@ -1,5 +1,6 @@
 package com.fintech.common.event;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fintech.common.domain.Currency;
@@ -12,7 +13,8 @@ import java.math.BigDecimal;
 import java.util.UUID;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
-public record TransactionInitiatedEvent(
+public record TransactionInitiatedEvent (
+        String requestId,
         String transactionId,
         String sourceAccountId,
         String destinationAccountId,

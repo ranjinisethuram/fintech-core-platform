@@ -11,8 +11,13 @@ import java.math.BigDecimal;
 import java.util.UUID;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
-public record TransactionSucceededEvent(
+public record TransactionSagaSucceededEvent(
         String transactionId,
+        String sagaId,
+        String fromAccountId,
+        String toAccountId,
+        BigDecimal amount,
+        Currency currency,
         TransactionType transactionType
 ) implements AggregateMessage {
     @Override

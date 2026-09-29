@@ -1,9 +1,8 @@
 package com.fintech.orchestration.sagastep.customeronboarding;
 
 import com.fintech.common.command.ActivateAccountCommand;
-import com.fintech.common.messaging.MessageEnvelope;
-import com.fintech.orchestration.contextmapper.CustomerOnboardingContext;
-import com.fintech.orchestration.contextmapper.SagaContextMapper;
+import com.fintech.common.orchestration.contextmapper.CustomerOnboardingContext;
+import com.fintech.common.orchestration.contextmapper.SagaContextMapper;
 import com.fintech.orchestration.domain.Saga;
 import com.fintech.orchestration.domain.SagaContext;
 import com.fintech.orchestration.domain.StepId;
@@ -54,7 +53,6 @@ public class ActivateAccountStep implements SagaStep {
                 currentSaga.getCorrelationId(),
                 causationId,
                 currentSaga.getSagaId().toString(),
-                "account-commands",
-                false);
+                "account-commands");
     }
 }

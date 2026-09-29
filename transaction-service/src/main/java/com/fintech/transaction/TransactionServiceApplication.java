@@ -6,7 +6,7 @@ import org.springframework.cloud.openfeign.EnableFeignClients;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication(scanBasePackages = {"com.fintech.transaction","com.fintech.outbox"
-        ,"com.fintech.common","com.fintech.security","com.fintech.accountcontract","com.fintech.commoncontract",
+        ,"com.fintech.common","com.fintech.security","com.fintech.transactioncontract","com.fintech.accountcontract","com.fintech.commoncontract",
         "com.fintech.ledgercontract","com.fintech.walletcontract"})
 @EnableScheduling
 @EnableFeignClients

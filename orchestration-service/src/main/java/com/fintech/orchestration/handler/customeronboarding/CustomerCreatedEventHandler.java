@@ -3,10 +3,9 @@ package com.fintech.orchestration.handler.customeronboarding;
 import com.fintech.common.event.CustomerCreatedEvent;
 import com.fintech.common.messaging.MessageEnvelope;
 import com.fintech.common.messaging.MessageHandler;
-import com.fintech.orchestration.contextmapper.CustomerOnboardingContext;
+import com.fintech.common.orchestration.contextmapper.CustomerOnboardingContext;
 import com.fintech.orchestration.domain.Saga;
-import com.fintech.orchestration.domain.SagaContextType;
-import com.fintech.orchestration.domain.SagaType;
+import com.fintech.common.domain.SagaContextType;
 import com.fintech.orchestration.engine.OrchestrationEngine;
 import com.fintech.orchestration.engine.SagaLifeCycleManager;
 import com.fintech.orchestration.repository.ProcessedMessagesRepository;
@@ -15,6 +14,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.UUID;
 
 @Component
 public class CustomerCreatedEventHandler implements MessageHandler {
@@ -38,7 +38,7 @@ public class CustomerCreatedEventHandler implements MessageHandler {
     }
 
     @Override
-    @Transactional
+    @Transactional(transactionManager = "transactionManager")
     public void handle(MessageEnvelope<?> envelope) {
         int rowsInserted = processedMessagesRepository.insert(envelope.getMessageId(),Instant.now());
         if(rowsInserted != 0) {
@@ -57,7 +57,9 @@ public class CustomerCreatedEventHandler implements MessageHandler {
             //Persist customer onboardingcontext as above.
             //Call orchestrationEngine.process(saga,envelope) which will execute current step and advance it.
             CustomerOnboardingContext customerOnboardingContext = new CustomerOnboardingContext();
-            customerOnboardingContext.setCustomerId(customerCreatedEvent.customerId());
+            customerOnboardingContext.setCustomerId(UUID.fromString(
+                    customerCreatedEvent.customerId()));
+            customerOnboardingContext.setDefaultAccount(true);
             Saga savedSaga = this.sagaLifeCycleManager.initiateSaga(envelope,
                     SagaContextType.CUSTOMER_ONBOARDING, customerOnboardingContext);
             this.orchestrationEngine.process(savedSaga, envelope.getMessageId());

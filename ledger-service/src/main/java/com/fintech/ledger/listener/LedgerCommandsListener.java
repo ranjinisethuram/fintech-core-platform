@@ -2,30 +2,25 @@ package com.fintech.ledger.listener;
 
 import com.fintech.common.command.CreateLedgerEntryCommand;
 import com.fintech.common.command.CreateWalletLedgerAccountCommand;
-import com.fintech.common.domain.LedgerEntryRequest;
-import com.fintech.common.event.AccountCreationSagaFailedEvent;
+import com.fintech.common.command.ReverseLedgerEntryCommand;
 import com.fintech.common.event.LedgerAccountCreationFailedEvent;
 import com.fintech.common.event.LedgerEntriesCreationFailedEvent;
-import com.fintech.common.event.TransactionSagaFailedEvent;
+import com.fintech.common.event.LedgerEntriesReversalFailedEvent;
 import com.fintech.common.exception.CommonErrorCode;
 import com.fintech.common.exception.ErrorCode;
 import com.fintech.common.messaging.MessageDispatcher;
 import com.fintech.common.messaging.MessageEnvelope;
 import com.fintech.ledger.service.LedgerService;
 import org.springframework.dao.DataAccessResourceFailureException;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.TransientDataAccessException;
 import org.springframework.kafka.annotation.BackOff;
 import org.springframework.kafka.annotation.DltHandler;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.annotation.RetryableTopic;
 import org.springframework.kafka.retrytopic.DltStrategy;
-import org.springframework.kafka.support.serializer.DeserializationException;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
-import java.util.Optional;
-import java.util.UUID;
 
 @Component
 public class LedgerCommandsListener {
@@ -78,8 +73,22 @@ public class LedgerCommandsListener {
             );
             this.ledgerService.writeFailedEventMessageToOutbox(ledgerEntriesCreationFailedEvent, envelope.getCorrelationId(),
                     envelope.getMessageId(), envelope.getSagaId());
+        }else if("ReverseLedgerEntryCommand".equals(eventType)){
+            ReverseLedgerEntryCommand reverseLedgerEntryCommand = (ReverseLedgerEntryCommand)
+                    envelope.getPayload();
+            LedgerEntriesReversalFailedEvent ledgerEntriesReversalFailedEvent = new LedgerEntriesReversalFailedEvent(
+                    reverseLedgerEntryCommand.sourceAcountId(),
+                    reverseLedgerEntryCommand.destinationAccountId(),
+                    reverseLedgerEntryCommand.paymentId(),
+                    reverseLedgerEntryCommand.transactionType(),
+                    errorCode.getErrorCode(),
+                    errorCode.getErrorMessage(),
+                    errorCode.isRetryable(),
+                    Instant.now()
+            );
+            this.ledgerService.writeFailedEventMessageToOutbox(ledgerEntriesReversalFailedEvent, envelope.getCorrelationId(),
+                    envelope.getMessageId(), envelope.getSagaId());
         }
-
     }
 
     private ErrorCode mapExceptionToApplicationErrorCode(Exception exception){

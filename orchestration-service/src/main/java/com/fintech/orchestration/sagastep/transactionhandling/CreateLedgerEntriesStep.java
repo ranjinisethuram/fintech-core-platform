@@ -1,9 +1,8 @@
 package com.fintech.orchestration.sagastep.transactionhandling;
 
 import com.fintech.common.command.CreateLedgerEntryCommand;
-import com.fintech.common.messaging.MessageEnvelope;
-import com.fintech.orchestration.contextmapper.SagaContextMapper;
-import com.fintech.orchestration.contextmapper.TransactionHandlingContext;
+import com.fintech.common.orchestration.contextmapper.SagaContextMapper;
+import com.fintech.common.orchestration.contextmapper.TransactionHandlingContext;
 import com.fintech.orchestration.domain.Saga;
 import com.fintech.orchestration.domain.SagaContext;
 import com.fintech.orchestration.domain.StepId;
@@ -11,6 +10,7 @@ import com.fintech.orchestration.engine.SagaStep;
 import com.fintech.orchestration.service.SagaService;
 import org.springframework.stereotype.Component;
 
+import java.util.Optional;
 import java.util.UUID;
 
 @Component
@@ -32,6 +32,11 @@ public class CreateLedgerEntriesStep implements SagaStep {
     @Override
     public void execute(Saga saga, String messageId) {
         publishCreateLedgerEntriesCommandToOutbox(saga, messageId, null, false);
+    }
+
+    @Override
+    public Optional<StepId> compensationStep() {
+        return Optional.of(StepId.REVERSE_LEDGER_ENTRIES);
     }
 
     @Override
@@ -59,7 +64,6 @@ public class CreateLedgerEntriesStep implements SagaStep {
                 currentSaga.getCorrelationId(),
                 causationId,
                 currentSaga.getSagaId().toString(),
-                "ledger-commands",
-                false);
+                "ledger-commands");
     }
 }

@@ -3,8 +3,10 @@ package com.fintech.wallet.outbox;
 import com.fintech.common.messaging.KafkaEventProducer;
 import com.fintech.outbox.OutboxPoller;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.PlatformTransactionManager;
 
 import java.time.Instant;
 import java.util.List;
@@ -38,7 +40,7 @@ public class WalletOutboxPoller extends OutboxPoller<WalletOutboxEvent> {
     @Override
     protected String resolveTopic(WalletOutboxEvent event) {
         //return event.getAggregateType().toLowerCase() + "-events";
-        return "waller-events";
+        return "wallet-events";
     }
 
     @Override

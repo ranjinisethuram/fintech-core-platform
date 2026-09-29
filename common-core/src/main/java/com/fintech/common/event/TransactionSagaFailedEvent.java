@@ -1,9 +1,12 @@
 package com.fintech.common.event;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fintech.common.domain.Currency;
+import com.fintech.common.domain.TransactionType;
 import com.fintech.common.messaging.AggregateMessage;
 import com.fintech.common.messaging.AggregateType;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -12,9 +15,10 @@ public record TransactionSagaFailedEvent(
         String sourceAccountId,
         String destinationAccountId,
         String sagaId,
-        String errorCode,
+        BigDecimal amount,
+        Currency currency,
+        TransactionType transactionType,
         String reason,
-        boolean retryable,
         Instant occurredAt
 ) implements AggregateMessage {
     @Override

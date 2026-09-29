@@ -1,4 +1,4 @@
-package com.fintech.transaction.dto;
+package com.fintech.transactioncontract.dto;
 
 import com.fintech.common.domain.Currency;
 import com.fintech.common.domain.TransactionType;
@@ -16,6 +16,7 @@ public class TransactionHistory {
     private Currency currency;
     private TransactionType transactionType;
     private Instant timestamp;
+    private String status;
 
     public UUID getTransactionId() {
         return transactionId;
@@ -71,5 +72,13 @@ public class TransactionHistory {
 
     public void setTimestamp(Instant timestamp) {
         this.timestamp = timestamp;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
     }
 }

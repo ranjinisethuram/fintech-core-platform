@@ -6,7 +6,8 @@ import com.fintech.common.exception.ErrorType;
 public enum CustomerErrorCode implements ErrorCode {
 
     CUSTOMER_NOT_FOUND("CUSTOMER_001","Customer not found", ErrorType.BUSINESS, false),
-    DUPLICATE_CUSTOMER("CUSTOMER_002","Customer already exist", ErrorType.BUSINESS, false);
+    DUPLICATE_CUSTOMER("CUSTOMER_002","Customer already exist", ErrorType.BUSINESS, false),
+    BENEFICIARY_NOT_FOUND("CUSTOMER_003","Beneficiary not found", ErrorType.BUSINESS, false);
 
     private final String errorCode;
     private final String errorMessage;

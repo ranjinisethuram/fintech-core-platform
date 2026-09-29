@@ -2,10 +2,16 @@ package com.fintech.fraud;
 
 import com.fintech.fraud.dto.FraudEvaluationRequest;
 import com.fintech.fraud.dto.FraudEvaluationResponse;
-import com.fintech.fraud.dto.HistoricalTransaction;
 import com.fintech.fraud.rule.RiskLevel;
 import com.fintech.fraud.service.FraudService;
+import com.fintech.fraudcontract.dto.HistoricalTransaction;
+import com.fintech.common.messaging.MessageEnvelopeFactory;
+import com.fintech.fraud.outbox.FraudOutboxRepository;
+import com.fintech.outbox.OutboxMapper;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -15,7 +21,22 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class FraudServiceTest {
 
-    private final FraudService fraudService = new FraudService();
+    @Mock
+    private MessageEnvelopeFactory envelopeFactory;
+
+    @Mock
+    private FraudOutboxRepository fraudOutboxRepository;
+
+    @Mock
+    private OutboxMapper outboxMapper;
+
+    private FraudService fraudService;
+
+    @BeforeEach
+    void setUp() {
+        MockitoAnnotations.openMocks(this);
+        fraudService = new FraudService(envelopeFactory, fraudOutboxRepository, outboxMapper);
+    }
 
     @Test
     void shouldReturnCriticalRiskForHighRiskTransaction() {

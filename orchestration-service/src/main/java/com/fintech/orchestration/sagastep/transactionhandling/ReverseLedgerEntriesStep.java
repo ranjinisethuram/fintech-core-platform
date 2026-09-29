@@ -1,6 +1,6 @@
 package com.fintech.orchestration.sagastep.transactionhandling;
 
-import com.fintech.common.command.CreateLedgerEntryCommand;
+import com.fintech.common.command.ReverseLedgerEntryCommand;
 import com.fintech.common.orchestration.contextmapper.SagaContextMapper;
 import com.fintech.common.orchestration.contextmapper.TransactionHandlingContext;
 import com.fintech.orchestration.domain.Saga;
@@ -13,39 +13,39 @@ import org.springframework.stereotype.Component;
 import java.util.UUID;
 
 @Component
-public class CreateLedgerEntriesStep implements SagaStep {
+public class ReverseLedgerEntriesStep implements SagaStep {
 
     private final SagaService sagaService;
     private final SagaContextMapper sagaContextMapper;
 
-    public CreateLedgerEntriesStep(SagaService sagaService, SagaContextMapper sagaContextMapper) {
+    public ReverseLedgerEntriesStep(SagaService sagaService, SagaContextMapper sagaContextMapper) {
         this.sagaService = sagaService;
         this.sagaContextMapper = sagaContextMapper;
     }
 
     @Override
     public StepId stepId() {
-        return StepId.CREATE_LEDGER_ENTRIES;
+        return StepId.REVERSE_LEDGER_ENTRIES;
     }
 
     @Override
     public void execute(Saga saga, String messageId) {
-        publishCreateLedgerEntriesCommandToOutbox(saga, messageId, null, false);
+        publishReverseLedgerEntriesCommandToOutbox(saga, messageId, null, false);
     }
 
     @Override
     public void recover(Saga saga, UUID sagaRecoveryId) {
-        publishCreateLedgerEntriesCommandToOutbox(saga, null, sagaRecoveryId, true);
+        publishReverseLedgerEntriesCommandToOutbox(saga, null, sagaRecoveryId, true);
     }
 
-    private void publishCreateLedgerEntriesCommandToOutbox(Saga currentSaga,
+    private void publishReverseLedgerEntriesCommandToOutbox(Saga currentSaga,
                     String messageId,
                     UUID sagaRecoveryId, boolean forRecover){
         SagaContext sagaContextEntity = this.sagaService.fetchSagaContext(currentSaga.getSagaId());
         TransactionHandlingContext transactionHandlingContext =
                 this.sagaContextMapper.fromJson(sagaContextEntity.getContextJson(),
                         TransactionHandlingContext.class);
-        CreateLedgerEntryCommand createLedgerEntryCommand = new CreateLedgerEntryCommand(
+        ReverseLedgerEntryCommand reverseLedgerEntryCommand = new ReverseLedgerEntryCommand(
                 transactionHandlingContext.getTransactionId(),
                 transactionHandlingContext.getSourceAccountId(),
                 transactionHandlingContext.getDestinationAccountId(),
@@ -54,7 +54,7 @@ public class CreateLedgerEntriesStep implements SagaStep {
                 transactionHandlingContext.getTransactionType()
         );
         String causationId = forRecover ? sagaRecoveryId.toString() : messageId;
-        this.sagaService.buildMessageEnvelopeAndPushToOutbox(createLedgerEntryCommand,
+        this.sagaService.buildMessageEnvelopeAndPushToOutbox(reverseLedgerEntryCommand,
                 currentSaga.getCorrelationId(),
                 causationId,
                 currentSaga.getSagaId().toString(),

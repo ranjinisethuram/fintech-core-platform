@@ -59,7 +59,8 @@ public class Wallet {
     }
 
     public void compensateAvailableBalance(BigDecimal amount) {
-        this.availableBalance = this.availableBalance.subtract(amount);
+        this.lockedBalance = this.lockedBalance.subtract(amount);
+        this.availableBalance = this.availableBalance.add(amount);
         this.updatedAt = Instant.now();
     }
 
